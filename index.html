@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environmental Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Kanit', sans-serif;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .gauge-container {
+            position: relative;
+            height: 140px;
+            width: 100%;
+        }
+        .value-display {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-8">
+    <div class="max-w-[1600px] mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                    Environmental Monitoring Dashboard
+                </h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-slate-500 text-sm">Station:</span>
+                    <span id="device-id" class="text-cyan-400 text-sm font-semibold">Scanning...</span>
+                </div>
+            </div>
+            <div class="glass-card px-4 py-2 flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="status-dot bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></span>
+                    <span class="text-xs text-slate-400 uppercase tracking-widest">Live Update</span>
+                </div>
+                <div class="h-4 w-[1px] bg-slate-700"></div>
+                <span id="last-update" class="text-sm text-slate-200 value-display">--:--:--</span>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <!-- PM2.5 -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">PM 2.5</span>
+                <span id="pm25-val" class="text-3xl font-bold text-orange-400 value-display">0.0</span>
+                <span class="text-[10px] text-slate-600">µg/m³</span>
+            </div>
+            <!-- CO2 -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">CO2</span>
+                <span id="co2-val" class="text-3xl font-bold text-emerald-400 value-display">0</span>
+                <span class="text-[10px] text-slate-600">PPM</span>
+            </div>
+            <!-- Temp -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">Temp</span>
+                <span id="temp-val" class="text-3xl font-bold text-blue-400 value-display">0.0</span>
+                <span class="text-[10px] text-slate-600">°C</span>
+            </div>
+            <!-- Humidity -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">Humi</span>
+                <span id="hum-val" class="text-3xl font-bold text-cyan-400 value-display">0</span>
+                <span class="text-[10px] text-slate-600">%</span>
+            </div>
+            <!-- Lux -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">Lux</span>
+                <span id="lux-val" class="text-3xl font-bold text-yellow-400 value-display">0</span>
+                <span class="text-[10px] text-slate-600">lx</span>
+            </div>
+            <!-- Noise -->
+            <div class="glass-card p-4 flex flex-col items-center justify-center">
+                <span class="text-xs text-slate-500 uppercase mb-1">Noise</span>
+                <span id="noise-val" class="text-3xl font-bold text-pink-400 value-display">0</span>
+                <span class="text-[10px] text-slate-600">dB</span>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Gauges (Left Side) -->
+            <div class="lg:col-span-1 flex flex-col gap-6">
+                <div class="glass-card p-6">
+                    <h3 class="text-sm text-slate-400 mb-4 text-center font-medium">Air Quality Index</h3>
+                    <div class="gauge-container flex items-center justify-center">
+                        <canvas id="gaugeAQI"></canvas>
+                        <div class="absolute mt-4 text-center">
+                            <div id="aqi-status" class="text-xs font-bold text-orange-400 uppercase">Moderate</div>
+                            <div id="aqi-val" class="text-2xl font-bold value-display">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card p-6 flex-grow">
+                    <h3 class="text-sm text-slate-400 mb-4 text-center font-medium">Noise Level</h3>
+                    <div class="gauge-container flex items-center justify-center">
+                        <canvas id="gaugeNoise"></canvas>
+                        <div class="absolute mt-4 text-center">
+                            <div id="noise-status" class="text-xs font-bold text-pink-400 uppercase">Normal</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chart (Right Side) -->
+            <div class="lg:col-span-3 glass-card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold">24-Cycle Trend Analysis</h3>
+                    <div class="flex gap-2">
+                        <span class="flex items-center gap-1 text-[10px] text-slate-400"><span class="w-2 h-2 rounded-full bg-orange-400"></span> PM2.5</span>
+                        <span class="flex items-center gap-1 text-[10px] text-slate-400"><span class="w-2 h-2 rounded-full bg-blue-400"></span> Temp</span>
+                    </div>
+                </div>
+                <div class="h-[380px]">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass-card overflow-hidden">
+            <div class="p-4 border-b border-white/5 bg-slate-800/20">
+                <h3 class="font-semibold text-slate-200">Recent Logs (Raw Data)</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-slate-500 border-b border-white/5">
+                            <th class="p-4 font-medium">Timestamp</th>
+                            <th class="p-4 font-medium">PM2.5</th>
+                            <th class="p-4 font-medium">CO2</th>
+                            <th class="p-4 font-medium">Temp</th>
+                            <th class="p-4 font-medium">Humi</th>
+                            <th class="p-4 font-medium">Lux</th>
+                            <th class="p-4 font-medium text-right">Noise</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="divide-y divide-white/5">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
+
+        // Mapping Indices based on your screenshot:
+        // 0: Timestamp, 1: Date, 2: Time, 3: Device ID, 4: PM2.5, 5: PM10, 
+        // 6: Temp, 7: Humi, 8: Lux, 9: Noise, 10: CO2
+        const IDX = { TIME:0, ID:3, PM25:4, PM10:5, TEMP:6, HUMI:7, LUX:8, NOISE:9, CO2:10 };
+
+        let charts = {};
+
+        async function fetchData() {
+            try {
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                const rows = data.split('\n').map(row => row.split(','));
+                const sensorData = rows.slice(1).filter(r => r.length > 5);
+                
+                if(sensorData.length > 0) {
+                    const latest = sensorData[sensorData.length - 1];
+                    const logs = sensorData.slice(-24);
+                    updateUI(latest, logs);
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+            }
+        }
+
+        function createGauge(id, color) {
+            return new Chart(document.getElementById(id), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [color, 'rgba(255,255,255,0.05)'],
+                        borderWidth: 0,
+                        circumference: 240,
+                        rotation: 240,
+                        cutout: '88%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        }
+
+        function updateUI(latest, logs) {
+            // Dashboard Values
+            document.getElementById('device-id').innerText = latest[IDX.ID];
+            document.getElementById('pm25-val').innerText = parseFloat(latest[IDX.PM25]).toFixed(1);
+            document.getElementById('co2-val').innerText = parseInt(latest[IDX.CO2]);
+            document.getElementById('temp-val').innerText = parseFloat(latest[IDX.TEMP]).toFixed(1);
+            document.getElementById('hum-val').innerText = Math.round(latest[IDX.HUMI]);
+            document.getElementById('lux-val').innerText = Math.round(latest[IDX.LUX]);
+            document.getElementById('noise-val').innerText = Math.round(latest[IDX.NOISE]);
+            document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+
+            // PM2.5 Gauge (AQI Proxy)
+            const pmVal = parseFloat(latest[IDX.PM25]);
+            charts.gaugeAQI.data.datasets[0].data = [pmVal, Math.max(0, 150 - pmVal)];
+            document.getElementById('aqi-val').innerText = Math.round(pmVal);
+            document.getElementById('aqi-status').innerText = pmVal > 50 ? 'Unhealthy' : 'Good';
+            document.getElementById('aqi-status').className = `text-xs font-bold uppercase ${pmVal > 50 ? 'text-orange-500' : 'text-emerald-500'}`;
+            charts.gaugeAQI.update();
+
+            // Noise Gauge
+            const noiseVal = parseFloat(latest[IDX.NOISE]);
+            charts.gaugeNoise.data.datasets[0].data = [noiseVal, Math.max(0, 120 - noiseVal)];
+            charts.gaugeNoise.update();
+
+            // Main Chart
+            charts.mainChart.data.labels = logs.map(l => l[IDX.TIME].split(' ')[1] || '00:00');
+            charts.mainChart.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
+            charts.mainChart.data.datasets[1].data = logs.map(l => l[IDX.TEMP]);
+            charts.mainChart.update();
+
+            // Table
+            const tableBody = document.getElementById('data-table-body');
+            tableBody.innerHTML = logs.slice(-8).reverse().map(l => `
+                <tr class="hover:bg-white/[0.02] transition-colors">
+                    <td class="p-4 text-slate-400 text-xs">${l[IDX.TIME]}</td>
+                    <td class="p-4 font-bold text-orange-400">${l[IDX.PM25]}</td>
+                    <td class="p-4 font-bold text-emerald-400">${l[IDX.CO2]}</td>
+                    <td class="p-4 text-blue-400">${l[IDX.TEMP]}</td>
+                    <td class="p-4 text-cyan-400">${l[IDX.HUMI]}</td>
+                    <td class="p-4 text-yellow-400">${l[IDX.LUX]}</td>
+                    <td class="p-4 text-right text-pink-400 font-mono">${l[IDX.NOISE]}</td>
+                </tr>
+            `).join('');
+        }
+
+        window.onload = () => {
+            charts.gaugeAQI = createGauge('gaugeAQI', '#f97316');
+            charts.gaugeNoise = createGauge('gaugeNoise', '#ec4899');
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            charts.mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'PM2.5',
+                            borderColor: '#f97316',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            data: [],
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Temp',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            data: [],
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } 
+                        },
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { color: '#64748b', font: { size: 10 } } 
+                        }
+                    }
+                }
+            });
+
+            fetchData();
+            setInterval(fetchData, 10000); // อัปเดตทุก 10 วินาที
+        };
+    </script>
+</body>
+</html>
