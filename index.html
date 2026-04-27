@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environmental Monitoring Dashboard</title>
+    <title>Environmental Monitoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -12,168 +12,267 @@
             background-color: #020617;
             color: #f8fafc;
             font-family: 'Kanit', sans-serif;
+            overflow-x: hidden;
         }
         .glass-card {
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 1.25rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        .gauge-container {
+        .nav-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .page-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .page-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .value-display { font-family: 'JetBrains Mono', monospace; }
+        .gauge-mini-container {
             position: relative;
-            height: 140px;
+            height: 120px;
             width: 100%;
         }
-        .value-display {
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .status-dot {
-            height: 8px;
-            width: 8px;
-            border-radius: 50%;
-            display: inline-block;
+        .gauge-center-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 15px;
         }
     </style>
 </head>
-<body class="p-4 md:p-6 lg:p-8">
-    <div class="max-w-[1600px] mx-auto">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div>
-                <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                    Environmental Monitoring Dashboard
-                </h1>
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="text-slate-500 text-sm">Station:</span>
-                    <span id="device-id" class="text-cyan-400 text-sm font-semibold">Scanning...</span>
+<body class="min-h-screen">
+    <!-- Sidebar / Top Nav -->
+    <nav class="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto px-4 md:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">ENV-MONITOR</h1>
+                    <div class="h-6 w-[1px] bg-slate-800 hidden md:block"></div>
+                    <div id="nav-tabs" class="flex gap-2">
+                        <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-4 py-2 rounded-lg text-sm font-medium">Real-time</button>
+                        <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Analytics</button>
+                        <button onclick="switchPage('data')" id="btn-data" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Data Logs</button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-xs">
+                    <span class="text-slate-500">ID: <span id="device-id" class="text-slate-300">---</span></span>
+                    <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-white/5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="last-update" class="value-display text-slate-300">--:--:--</span>
+                    </div>
                 </div>
             </div>
-            <div class="glass-card px-4 py-2 flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <span class="status-dot bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></span>
-                    <span class="text-xs text-slate-400 uppercase tracking-widest">Live Update</span>
+        </div>
+    </nav>
+
+    <main class="max-w-[1600px] mx-auto p-4 md:p-8">
+        
+        <!-- PAGE 1: REAL-TIME DASHBOARD (GAUGES) -->
+        <section id="page-realtime" class="page-content active">
+            <!-- Gauges Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+                <!-- Gauge Item: PM2.5 -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">PM 2.5</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gPM25"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-pm25" class="text-xl font-bold value-display text-orange-400">0</span>
+                            <span class="text-[8px] text-slate-600">µg/m³</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="h-4 w-[1px] bg-slate-700"></div>
-                <span id="last-update" class="text-sm text-slate-200 value-display">--:--:--</span>
+                <!-- Gauge Item: PM10 -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">PM 10</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gPM10"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-pm10" class="text-xl font-bold value-display text-yellow-500">0</span>
+                            <span class="text-[8px] text-slate-600">µg/m³</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gauge Item: CO2 -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">CO2</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gCO2"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-co2" class="text-xl font-bold value-display text-emerald-400">0</span>
+                            <span class="text-[8px] text-slate-600">PPM</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gauge Item: Temp -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Temperature</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gTemp"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-temp" class="text-xl font-bold value-display text-blue-400">0.0</span>
+                            <span class="text-[8px] text-slate-600">°C</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gauge Item: Humi -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Humidity</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gHumi"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-humi" class="text-xl font-bold value-display text-cyan-400">0</span>
+                            <span class="text-[8px] text-slate-600">%</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gauge Item: Lux -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Lux</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gLux"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-lux" class="text-xl font-bold value-display text-amber-400">0</span>
+                            <span class="text-[8px] text-slate-600">lx</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Gauge Item: Noise -->
+                <div class="glass-card p-4">
+                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Noise</h4>
+                    <div class="gauge-mini-container">
+                        <canvas id="gNoise"></canvas>
+                        <div class="gauge-center-text">
+                            <span id="val-noise" class="text-xl font-bold value-display text-pink-400">0</span>
+                            <span class="text-[8px] text-slate-600">dB</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <!-- KPI Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <!-- PM2.5 -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">PM 2.5</span>
-                <span id="pm25-val" class="text-3xl font-bold text-orange-400 value-display">0.0</span>
-                <span class="text-[10px] text-slate-600">µg/m³</span>
+            <!-- Summary Analysis Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass-card p-6 flex flex-col items-center justify-center min-h-[300px]">
+                    <h3 class="text-slate-400 mb-6 uppercase text-xs tracking-tighter">Environment Health Index</h3>
+                    <div class="relative w-full max-w-[220px]">
+                        <canvas id="gaugeHealth"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pt-10">
+                            <span id="health-status" class="text-xl font-bold uppercase text-emerald-400">EXCELLENT</span>
+                            <span class="text-[10px] text-slate-500">System Monitoring</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 glass-card p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-slate-400 uppercase text-xs tracking-tighter">Real-time Activity (Last 30 cycles)</h3>
+                        <div class="flex gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]"></span>
+                        </div>
+                    </div>
+                    <div class="h-[250px]">
+                        <canvas id="miniTrendChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <!-- CO2 -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">CO2</span>
-                <span id="co2-val" class="text-3xl font-bold text-emerald-400 value-display">0</span>
-                <span class="text-[10px] text-slate-600">PPM</span>
-            </div>
-            <!-- Temp -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">Temp</span>
-                <span id="temp-val" class="text-3xl font-bold text-blue-400 value-display">0.0</span>
-                <span class="text-[10px] text-slate-600">°C</span>
-            </div>
-            <!-- Humidity -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">Humi</span>
-                <span id="hum-val" class="text-3xl font-bold text-cyan-400 value-display">0</span>
-                <span class="text-[10px] text-slate-600">%</span>
-            </div>
-            <!-- Lux -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">Lux</span>
-                <span id="lux-val" class="text-3xl font-bold text-yellow-400 value-display">0</span>
-                <span class="text-[10px] text-slate-600">lx</span>
-            </div>
-            <!-- Noise -->
-            <div class="glass-card p-4 flex flex-col items-center justify-center">
-                <span class="text-xs text-slate-500 uppercase mb-1">Noise</span>
-                <span id="noise-val" class="text-3xl font-bold text-pink-400 value-display">0</span>
-                <span class="text-[10px] text-slate-600">dB</span>
-            </div>
-        </div>
+        </section>
 
-        <!-- Main Dashboard Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-            <!-- Gauges (Left Side) -->
-            <div class="lg:col-span-1 flex flex-col gap-6">
+        <!-- PAGE 2: ANALYTICS (CHARTS) -->
+        <section id="page-analytics" class="page-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="glass-card p-6">
-                    <h3 class="text-sm text-slate-400 mb-4 text-center font-medium">Air Quality Index</h3>
-                    <div class="gauge-container flex items-center justify-center">
-                        <canvas id="gaugeAQI"></canvas>
-                        <div class="absolute mt-4 text-center">
-                            <div id="aqi-status" class="text-xs font-bold text-orange-400 uppercase">Moderate</div>
-                            <div id="aqi-val" class="text-2xl font-bold value-display">--</div>
-                        </div>
-                    </div>
+                    <h3 class="text-sm font-semibold mb-4 text-orange-400">Particulate Matter (PM2.5 vs PM10)</h3>
+                    <div class="h-[300px]"><canvas id="chartPM"></canvas></div>
                 </div>
-                <div class="glass-card p-6 flex-grow">
-                    <h3 class="text-sm text-slate-400 mb-4 text-center font-medium">Noise Level</h3>
-                    <div class="gauge-container flex items-center justify-center">
-                        <canvas id="gaugeNoise"></canvas>
-                        <div class="absolute mt-4 text-center">
-                            <div id="noise-status" class="text-xs font-bold text-pink-400 uppercase">Normal</div>
-                        </div>
-                    </div>
+                <div class="glass-card p-6">
+                    <h3 class="text-sm font-semibold mb-4 text-blue-400">Climate (Temperature & Humidity)</h3>
+                    <div class="h-[300px]"><canvas id="chartClimate"></canvas></div>
+                </div>
+                <div class="glass-card p-6 lg:col-span-2">
+                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">Environmental (CO2 / Lux / Noise)</h3>
+                    <div class="h-[300px]"><canvas id="chartEnv"></canvas></div>
                 </div>
             </div>
+        </section>
 
-            <!-- Main Chart (Right Side) -->
-            <div class="lg:col-span-3 glass-card p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-semibold">24-Cycle Trend Analysis</h3>
-                    <div class="flex gap-2">
-                        <span class="flex items-center gap-1 text-[10px] text-slate-400"><span class="w-2 h-2 rounded-full bg-orange-400"></span> PM2.5</span>
-                        <span class="flex items-center gap-1 text-[10px] text-slate-400"><span class="w-2 h-2 rounded-full bg-blue-400"></span> Temp</span>
-                    </div>
+        <!-- PAGE 3: DATA LOGS -->
+        <section id="page-data" class="page-content">
+            <div class="glass-card overflow-hidden">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                    <h3 class="font-semibold text-xl text-slate-200">Historical Data Logs</h3>
+                    <button onclick="fetchData()" class="text-xs bg-blue-600/20 text-blue-400 border border-blue-600/30 px-4 py-2 rounded-full hover:bg-blue-600/40 transition-all">Refresh Sync</button>
                 </div>
-                <div class="h-[380px]">
-                    <canvas id="mainChart"></canvas>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-white/[0.03] text-slate-400">
+                                <th class="p-4 font-medium border-b border-white/5">Timestamp</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">PM2.5</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">PM10</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">CO2</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">Temp</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">Humi</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-center">Lux</th>
+                                <th class="p-4 font-medium border-b border-white/5 text-right">Noise</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body" class="divide-y divide-white/5"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-
-        <!-- Table -->
-        <div class="glass-card overflow-hidden">
-            <div class="p-4 border-b border-white/5 bg-slate-800/20">
-                <h3 class="font-semibold text-slate-200">Recent Logs (Raw Data)</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-500 border-b border-white/5">
-                            <th class="p-4 font-medium">Timestamp</th>
-                            <th class="p-4 font-medium">PM2.5</th>
-                            <th class="p-4 font-medium">CO2</th>
-                            <th class="p-4 font-medium">Temp</th>
-                            <th class="p-4 font-medium">Humi</th>
-                            <th class="p-4 font-medium">Lux</th>
-                            <th class="p-4 font-medium text-right">Noise</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-table-body" class="divide-y divide-white/5">
-                        <!-- Dynamic Rows -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
-
-        // Mapping Indices based on your screenshot:
-        // 0: Timestamp, 1: Date, 2: Time, 3: Device ID, 4: PM2.5, 5: PM10, 
-        // 6: Temp, 7: Humi, 8: Lux, 9: Noise, 10: CO2
         const IDX = { TIME:0, ID:3, PM25:4, PM10:5, TEMP:6, HUMI:7, LUX:8, NOISE:9, CO2:10 };
-
+        const LIMITS = { PM25:100, PM10:150, CO2:2000, TEMP:50, HUMI:100, LUX:5000, NOISE:120 };
+        
         let charts = {};
+
+        function switchPage(pageId) {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            document.getElementById(`btn-${pageId}`).classList.add('active');
+        }
+
+        function createMiniGauge(id, color) {
+            return new Chart(document.getElementById(id), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [color, 'rgba(255,255,255,0.03)'],
+                        borderWidth: 0,
+                        circumference: 240,
+                        rotation: 240,
+                        cutout: '85%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    animation: { duration: 1000 }
+                }
+            });
+        }
 
         async function fetchData() {
             try {
@@ -181,131 +280,134 @@
                 const data = await response.text();
                 const rows = data.split('\n').map(row => row.split(','));
                 const sensorData = rows.slice(1).filter(r => r.length > 5);
-                
                 if(sensorData.length > 0) {
                     const latest = sensorData[sensorData.length - 1];
-                    const logs = sensorData.slice(-24);
+                    const logs = sensorData.slice(-30);
                     updateUI(latest, logs);
                 }
-            } catch (error) {
-                console.error('Fetch Error:', error);
-            }
-        }
-
-        function createGauge(id, color) {
-            return new Chart(document.getElementById(id), {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [0, 100],
-                        backgroundColor: [color, 'rgba(255,255,255,0.05)'],
-                        borderWidth: 0,
-                        circumference: 240,
-                        rotation: 240,
-                        cutout: '88%'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
-                }
-            });
+            } catch (e) { console.error(e); }
         }
 
         function updateUI(latest, logs) {
-            // Dashboard Values
             document.getElementById('device-id').innerText = latest[IDX.ID];
-            document.getElementById('pm25-val').innerText = parseFloat(latest[IDX.PM25]).toFixed(1);
-            document.getElementById('co2-val').innerText = parseInt(latest[IDX.CO2]);
-            document.getElementById('temp-val').innerText = parseFloat(latest[IDX.TEMP]).toFixed(1);
-            document.getElementById('hum-val').innerText = Math.round(latest[IDX.HUMI]);
-            document.getElementById('lux-val').innerText = Math.round(latest[IDX.LUX]);
-            document.getElementById('noise-val').innerText = Math.round(latest[IDX.NOISE]);
             document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
 
-            // PM2.5 Gauge (AQI Proxy)
+            // Mapping values to UI
+            const updateGauge = (chart, val, max, elId) => {
+                const num = parseFloat(val) || 0;
+                chart.data.datasets[0].data = [num, Math.max(0, max - num)];
+                chart.update();
+                document.getElementById(elId).innerText = val;
+            };
+
+            updateGauge(charts.gPM25, latest[IDX.PM25], LIMITS.PM25, 'val-pm25');
+            updateGauge(charts.gPM10, latest[IDX.PM10], LIMITS.PM10, 'val-pm10');
+            updateGauge(charts.gCO2, latest[IDX.CO2], LIMITS.CO2, 'val-co2');
+            updateGauge(charts.gTemp, latest[IDX.TEMP], LIMITS.TEMP, 'val-temp');
+            updateGauge(charts.gHumi, latest[IDX.HUMI], LIMITS.HUMI, 'val-humi');
+            updateGauge(charts.gLux, latest[IDX.LUX], LIMITS.LUX, 'val-lux');
+            updateGauge(charts.gNoise, latest[IDX.NOISE], LIMITS.NOISE, 'val-noise');
+
+            // Health Status logic
             const pmVal = parseFloat(latest[IDX.PM25]);
-            charts.gaugeAQI.data.datasets[0].data = [pmVal, Math.max(0, 150 - pmVal)];
-            document.getElementById('aqi-val').innerText = Math.round(pmVal);
-            document.getElementById('aqi-status').innerText = pmVal > 50 ? 'Unhealthy' : 'Good';
-            document.getElementById('aqi-status').className = `text-xs font-bold uppercase ${pmVal > 50 ? 'text-orange-500' : 'text-emerald-500'}`;
-            charts.gaugeAQI.update();
+            let status = "EXCELLENT";
+            let color = "#10b981";
+            if(pmVal > 37) { status = "FAIR"; color = "#f59e0b"; }
+            if(pmVal > 75) { status = "POOR"; color = "#ef4444"; }
+            document.getElementById('health-status').innerText = status;
+            document.getElementById('health-status').style.color = color;
+            charts.gaugeHealth.data.datasets[0].backgroundColor[0] = color;
+            charts.gaugeHealth.data.datasets[0].data = [100, 0];
+            charts.gaugeHealth.update();
 
-            // Noise Gauge
-            const noiseVal = parseFloat(latest[IDX.NOISE]);
-            charts.gaugeNoise.data.datasets[0].data = [noiseVal, Math.max(0, 120 - noiseVal)];
-            charts.gaugeNoise.update();
+            // Charts
+            const times = logs.map(l => l[IDX.TIME].split(' ')[1] || '');
+            charts.miniTrend.data.labels = times;
+            charts.miniTrend.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
+            charts.miniTrend.update();
 
-            // Main Chart
-            charts.mainChart.data.labels = logs.map(l => l[IDX.TIME].split(' ')[1] || '00:00');
-            charts.mainChart.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
-            charts.mainChart.data.datasets[1].data = logs.map(l => l[IDX.TEMP]);
-            charts.mainChart.update();
+            charts.pm.data.labels = times;
+            charts.pm.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
+            charts.pm.data.datasets[1].data = logs.map(l => l[IDX.PM10]);
+            charts.pm.update();
+
+            charts.climate.data.labels = times;
+            charts.climate.data.datasets[0].data = logs.map(l => l[IDX.TEMP]);
+            charts.climate.data.datasets[1].data = logs.map(l => l[IDX.HUMI]);
+            charts.climate.update();
+
+            charts.env.data.labels = times;
+            charts.env.data.datasets[0].data = logs.map(l => l[IDX.CO2]);
+            charts.env.data.datasets[1].data = logs.map(l => l[IDX.NOISE]);
+            charts.env.update();
 
             // Table
             const tableBody = document.getElementById('data-table-body');
-            tableBody.innerHTML = logs.slice(-8).reverse().map(l => `
-                <tr class="hover:bg-white/[0.02] transition-colors">
-                    <td class="p-4 text-slate-400 text-xs">${l[IDX.TIME]}</td>
-                    <td class="p-4 font-bold text-orange-400">${l[IDX.PM25]}</td>
-                    <td class="p-4 font-bold text-emerald-400">${l[IDX.CO2]}</td>
-                    <td class="p-4 text-blue-400">${l[IDX.TEMP]}</td>
-                    <td class="p-4 text-cyan-400">${l[IDX.HUMI]}</td>
-                    <td class="p-4 text-yellow-400">${l[IDX.LUX]}</td>
+            tableBody.innerHTML = logs.slice().reverse().map(l => `
+                <tr class="hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
+                    <td class="p-4 text-slate-500 font-mono text-[11px]">${l[IDX.TIME]}</td>
+                    <td class="p-4 text-center font-bold text-orange-400">${l[IDX.PM25]}</td>
+                    <td class="p-4 text-center font-bold text-yellow-500">${l[IDX.PM10]}</td>
+                    <td class="p-4 text-center font-bold text-emerald-400">${l[IDX.CO2]}</td>
+                    <td class="p-4 text-center text-blue-400">${l[IDX.TEMP]}</td>
+                    <td class="p-4 text-center text-cyan-400">${l[IDX.HUMI]}</td>
+                    <td class="p-4 text-center text-amber-400">${l[IDX.LUX]}</td>
                     <td class="p-4 text-right text-pink-400 font-mono">${l[IDX.NOISE]}</td>
                 </tr>
             `).join('');
         }
 
-        window.onload = () => {
-            charts.gaugeAQI = createGauge('gaugeAQI', '#f97316');
-            charts.gaugeNoise = createGauge('gaugeNoise', '#ec4899');
-
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            charts.mainChart = new Chart(ctx, {
+        function createBaseChart(id, datasets) {
+            return new Chart(document.getElementById(id), {
                 type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [
-                        {
-                            label: 'PM2.5',
-                            borderColor: '#f97316',
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            data: [],
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Temp',
-                            borderColor: '#3b82f6',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            data: [],
-                            tension: 0.4,
-                            fill: false
-                        }
-                    ]
-                },
+                data: { labels: [], datasets: datasets },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#64748b', font: { size: 10 } } } },
                     scales: {
-                        y: { 
-                            grid: { color: 'rgba(255,255,255,0.05)' }, 
-                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } 
-                        },
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { color: '#64748b', font: { size: 10 } } 
-                        }
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 } } }
                     }
                 }
             });
+        }
+
+        window.onload = () => {
+            charts.gPM25 = createMiniGauge('gPM25', '#f97316');
+            charts.gPM10 = createMiniGauge('gPM10', '#eab308');
+            charts.gCO2 = createMiniGauge('gCO2', '#10b981');
+            charts.gTemp = createMiniGauge('gTemp', '#3b82f6');
+            charts.gHumi = createMiniGauge('gHumi', '#06b6d4');
+            charts.gLux = createMiniGauge('gLux', '#f59e0b');
+            charts.gNoise = createMiniGauge('gNoise', '#ec4899');
+
+            charts.gaugeHealth = new Chart(document.getElementById('gaugeHealth'), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [100, 0], backgroundColor: ['#10b981', '#1e293b'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '80%' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { enabled: false } } }
+            });
+
+            charts.miniTrend = createBaseChart('miniTrendChart', [
+                { label: 'Air Quality Trend', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 0, data: [], tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.05)' }
+            ]);
+
+            charts.pm = createBaseChart('chartPM', [
+                { label: 'PM2.5', borderColor: '#f97316', data: [], tension: 0.3 },
+                { label: 'PM10', borderColor: '#eab308', data: [], tension: 0.3 }
+            ]);
+
+            charts.climate = createBaseChart('chartClimate', [
+                { label: 'Temp (°C)', borderColor: '#3b82f6', data: [], tension: 0.3 },
+                { label: 'Humi (%)', borderColor: '#22d3ee', data: [], tension: 0.3 }
+            ]);
+
+            charts.env = createBaseChart('chartEnv', [
+                { label: 'CO2 (PPM)', borderColor: '#10b981', data: [], tension: 0.3 },
+                { label: 'Noise (dB)', borderColor: '#ec4899', data: [], tension: 0.3 }
+            ]);
 
             fetchData();
-            setInterval(fetchData, 10000); // อัปเดตทุก 10 วินาที
+            setInterval(fetchData, 10000);
         };
     </script>
 </body>
