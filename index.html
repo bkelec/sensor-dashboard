@@ -8,25 +8,46 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #020617;
+            --card-bg: rgba(15, 23, 42, 0.8);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --nav-bg: rgba(2, 6, 23, 0.8);
+            --grid-color: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.05);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --nav-bg: rgba(248, 250, 252, 0.8);
+            --grid-color: rgba(0, 0, 0, 0.05);
+        }
+
         body {
-            background-color: #020617;
-            color: #f8fafc;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             font-family: 'Kanit', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
             overflow-x: hidden;
         }
         .glass-card {
-            background: rgba(15, 23, 42, 0.8);
+            background: var(--card-bg);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
             border-radius: 1.25rem;
         }
         .nav-btn {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            color: #94a3b8;
+            color: var(--text-muted);
         }
         .nav-btn.active {
             background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
+            color: #3b82f6;
             border-bottom: 2px solid #3b82f6;
         }
         .page-content {
@@ -55,10 +76,19 @@
             justify-content: center;
             padding-top: 15px;
         }
+        .theme-toggle {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .theme-toggle:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
     </style>
 </head>
 <body class="min-h-screen">
-    <nav class="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
+    <nav class="sticky top-0 z-50 border-b border-white/5 bg-[var(--nav-bg)] backdrop-blur-md">
         <div class="max-w-[1600px] mx-auto px-4 md:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
                 <div class="flex items-center gap-4">
@@ -70,11 +100,18 @@
                         <button onclick="switchPage('data')" id="btn-data" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Data Logs</button>
                     </div>
                 </div>
-                <div class="flex items-center gap-4 text-xs">
-                    <span class="text-slate-500">Device: <span id="device-id" class="text-slate-300">Scanning...</span></span>
-                    <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-white/5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span id="last-update" class="value-display text-slate-300">--:--:--</span>
+                <div class="flex items-center gap-6">
+                    <!-- Theme Toggle -->
+                    <button onclick="toggleTheme()" class="theme-toggle flex items-center justify-center border border-white/10">
+                        <span id="theme-icon" class="text-lg">🌙</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-4 text-xs">
+                        <span class="text-slate-500">Device: <span id="device-id" class="text-[var(--text-main)]">Scanning...</span></span>
+                        <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span id="last-update" class="value-display text-[var(--text-main)]">--:--:--</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -86,72 +123,72 @@
         <section id="page-realtime" class="page-content active">
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">PM 2.5</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">PM 2.5</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gPM25"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-pm25" class="text-xl font-bold value-display text-orange-400">0</span>
-                            <span class="text-[8px] text-slate-600">µg/m³</span>
+                            <span class="text-[8px] opacity-60">µg/m³</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">PM 10</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">PM 10</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gPM10"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-pm10" class="text-xl font-bold value-display text-yellow-500">0</span>
-                            <span class="text-[8px] text-slate-600">µg/m³</span>
+                            <span class="text-[8px] opacity-60">µg/m³</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">CO2</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">CO2</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gCO2"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-co2" class="text-xl font-bold value-display text-emerald-400">0</span>
-                            <span class="text-[8px] text-slate-600">PPM</span>
+                            <span class="text-[8px] opacity-60">PPM</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Temp</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Temp</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gTemp"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-temp" class="text-xl font-bold value-display text-blue-400">0</span>
-                            <span class="text-[8px] text-slate-600">°C</span>
+                            <span class="text-[8px] opacity-60">°C</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Humi</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Humi</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gHumi"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-humi" class="text-xl font-bold value-display text-cyan-400">0</span>
-                            <span class="text-[8px] text-slate-600">%</span>
+                            <span class="text-[8px] opacity-60">%</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Lux</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Lux</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gLux"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-lux" class="text-xl font-bold value-display text-amber-400">0</span>
-                            <span class="text-[8px] text-slate-600">lx</span>
+                            <span class="text-[8px] opacity-60">lx</span>
                         </div>
                     </div>
                 </div>
                 <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-slate-500 uppercase text-center mb-2">Noise</h4>
+                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Noise</h4>
                     <div class="gauge-mini-container">
                         <canvas id="gNoise"></canvas>
                         <div class="gauge-center-text">
                             <span id="val-noise" class="text-xl font-bold value-display text-pink-400">0</span>
-                            <span class="text-[8px] text-slate-600">dB</span>
+                            <span class="text-[8px] opacity-60">dB</span>
                         </div>
                     </div>
                 </div>
@@ -159,7 +196,7 @@
 
             <div class="grid grid-cols-1 gap-6">
                 <div class="glass-card p-6">
-                    <h3 class="text-slate-400 uppercase text-xs tracking-widest mb-6">Activity Timeline (PM2.5)</h3>
+                    <h3 class="text-[var(--text-muted)] uppercase text-xs tracking-widest mb-6">Activity Timeline (PM2.5)</h3>
                     <div class="h-[300px]">
                         <canvas id="miniTrendChart"></canvas>
                     </div>
@@ -178,17 +215,14 @@
                     <h3 class="text-sm font-semibold mb-4 text-blue-400">Temperature & Humidity (24h Trend)</h3>
                     <div class="h-[300px]"><canvas id="chartClimate"></canvas></div>
                 </div>
-                <!-- กราฟแยก CO2 -->
                 <div class="glass-card p-6">
                     <h3 class="text-sm font-semibold mb-4 text-emerald-400">CO2 Concentration (24h Trend)</h3>
                     <div class="h-[250px]"><canvas id="chartCO2"></canvas></div>
                 </div>
-                <!-- กราฟแยก Lux -->
                 <div class="glass-card p-6">
                     <h3 class="text-sm font-semibold mb-4 text-amber-400">Light Intensity - Lux (24h Trend)</h3>
                     <div class="h-[250px]"><canvas id="chartLux"></canvas></div>
                 </div>
-                <!-- กราฟแยก Noise (เต็มความกว้าง) -->
                 <div class="glass-card p-6 lg:col-span-2">
                     <h3 class="text-sm font-semibold mb-4 text-pink-400">Noise Level - dB (24h Trend)</h3>
                     <div class="h-[250px]"><canvas id="chartNoise"></canvas></div>
@@ -200,13 +234,13 @@
         <section id="page-data" class="page-content">
             <div class="glass-card overflow-hidden">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                    <h3 class="font-semibold text-xl text-slate-200">System Logs</h3>
+                    <h3 class="font-semibold text-xl text-[var(--text-main)]">System Logs</h3>
                     <button onclick="fetchData()" class="text-xs bg-blue-600/20 text-blue-400 border border-blue-600/30 px-4 py-2 rounded-full hover:bg-blue-600/40">Manual Sync</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead>
-                            <tr class="bg-white/[0.03] text-slate-500 uppercase text-[10px] tracking-wider">
+                            <tr class="bg-black/10 text-[var(--text-muted)] uppercase text-[10px] tracking-wider">
                                 <th class="p-4 font-medium border-b border-white/5">Time</th>
                                 <th class="p-4 font-medium border-b border-white/5 text-center">PM2.5</th>
                                 <th class="p-4 font-medium border-b border-white/5 text-center">PM10</th>
@@ -231,6 +265,30 @@
         const LIMITS = { PM25:100, PM10:150, CO2:2000, TEMP:50, HUMI:100, LUX:5000, NOISE:120 };
         
         let charts = {};
+        let currentTheme = 'dark';
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', currentTheme);
+            document.getElementById('theme-icon').innerText = currentTheme === 'dark' ? '🌙' : '☀️';
+            
+            // อัปเดตสีของกราฟทั้งหมดเพื่อให้เข้ากับธีมใหม่
+            updateChartThemes();
+        }
+
+        function updateChartThemes() {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
+            
+            Object.values(charts).forEach(chart => {
+                if (chart.options.scales && chart.options.scales.y) {
+                    chart.options.scales.y.grid.color = gridColor;
+                    chart.options.scales.y.ticks.color = textColor;
+                    chart.options.scales.x.ticks.color = textColor;
+                    chart.update('none');
+                }
+            });
+        }
 
         function switchPage(pageId) {
             document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
@@ -245,7 +303,7 @@
                 data: {
                     datasets: [{
                         data: [0, 100],
-                        backgroundColor: [color, 'rgba(255,255,255,0.03)'],
+                        backgroundColor: [color, 'rgba(128,128,128,0.1)'],
                         borderWidth: 0,
                         circumference: 240,
                         rotation: 240,
@@ -305,7 +363,6 @@
             charts.miniTrend.data.datasets[0].data = recentLogs.map(l => l[IDX.PM25]);
             charts.miniTrend.update('none');
 
-            // อัปเดตกราฟ Analytics ทั้งหมด
             charts.pm.data.labels = times;
             charts.pm.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
             charts.pm.data.datasets[1].data = logs.map(l => l[IDX.PM10]);
@@ -330,8 +387,8 @@
 
             const tableBody = document.getElementById('data-table-body');
             tableBody.innerHTML = logs.slice(-50).reverse().map(l => `
-                <tr class="hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
-                    <td class="p-4 text-slate-500 font-mono text-[11px]">${l[IDX.TIME]}</td>
+                <tr class="hover:bg-black/5 transition-colors border-b border-black/5">
+                    <td class="p-4 text-[var(--text-muted)] font-mono text-[11px]">${l[IDX.TIME]}</td>
                     <td class="p-4 text-center font-bold text-orange-400">${Math.round(l[IDX.PM25])}</td>
                     <td class="p-4 text-center font-bold text-yellow-500">${Math.round(l[IDX.PM10])}</td>
                     <td class="p-4 text-center font-bold text-emerald-400">${Math.round(l[IDX.CO2])}</td>
@@ -343,19 +400,21 @@
             `).join('');
         }
 
-        function createBaseChart(id, datasets, extraOptions = {}) {
+        function createBaseChart(id, datasets) {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
+
             return new Chart(document.getElementById(id), {
                 type: 'line',
                 data: { labels: [], datasets: datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     elements: { point: { radius: 0 } },
-                    plugins: { legend: { labels: { color: '#64748b', font: { size: 10 } } } },
+                    plugins: { legend: { labels: { color: textColor, font: { size: 10 } } } },
                     scales: {
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', font: { size: 10 } } },
-                        x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 }, maxRotation: 0 } }
-                    },
-                    ...extraOptions
+                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 }, maxRotation: 0 } }
+                    }
                 }
             });
         }
@@ -383,17 +442,14 @@
                 { label: 'Humi', borderColor: '#22d3ee', data: [], tension: 0.3, borderWidth: 1.5 }
             ]);
 
-            // กราฟ CO2 แยกเดี่ยว
             charts.co2 = createBaseChart('chartCO2', [
                 { label: 'CO2 (PPM)', borderColor: '#10b981', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)' }
             ]);
 
-            // กราฟ Lux แยกเดี่ยว
             charts.lux = createBaseChart('chartLux', [
                 { label: 'Lux', borderColor: '#f59e0b', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(245, 158, 11, 0.05)' }
             ]);
 
-            // กราฟ Noise แยกเดี่ยว
             charts.noise = createBaseChart('chartNoise', [
                 { label: 'Noise (dB)', borderColor: '#ec4899', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(236, 72, 153, 0.05)' }
             ]);
