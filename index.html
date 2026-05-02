@@ -1,258 +1,256 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Pro Sensor Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENV MONITOR PRO</title>
 
-<script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
-  margin: 0;
-  font-family: Arial;
-  background: #0b1026;
-  color: white;
+  background:#020617;
+  color:#e2e8f0;
+  font-family:sans-serif;
+}
+
+/* GLASS */
+.glass {
+  background: rgba(15,23,42,0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 15px;
+}
+
+/* GLOW */
+.glow-green { box-shadow:0 0 15px #00ffcc66; }
+.glow-yellow { box-shadow:0 0 15px #ffcc0066; }
+.glow-red { box-shadow:0 0 15px #ff3b3b66; }
+
+/* GAUGE TEXT */
+.gauge-wrap {
+  position:relative;
+  height:120px;
+}
+.gauge-text {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-weight:bold;
 }
 
 /* NAV */
-.nav {
-  display: flex;
-  background: #11193f;
+.nav button{
+  padding:10px;
 }
-.nav button {
-  flex: 1;
-  padding: 14px;
-  border: none;
-  background: none;
-  color: white;
-  cursor: pointer;
-}
-
-/* PAGE */
-.page { display:none; padding:15px; }
-.active { display:block; }
-
-/* GRID */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap: 15px;
-}
-
-/* CARD */
-.card {
-  background: linear-gradient(145deg,#141c44,#0c1230);
-  border-radius: 20px;
-  height: 220px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.6);
-  transition: 0.3s;
-}
-
-/* NEON GLOW */
-.card.glow-green { box-shadow: 0 0 20px #00ffcc; }
-.card.glow-yellow { box-shadow: 0 0 20px #ffcc00; }
-.card.glow-red { box-shadow: 0 0 20px #ff3b3b; }
-
-/* GRAPH */
-.chart {
-  width:100%;
-  height:400px;
-  background:#141c44;
-  border-radius:16px;
-}
-
-/* TABLE */
-.table {
-  width:100%;
-  border-collapse:collapse;
-}
-.table th,.table td{
-  padding:6px;
-  border-bottom:1px solid #333;
-  font-size:12px;
+.active{
+  color:#38bdf8;
 }
 </style>
 </head>
 
 <body>
 
-<div class="nav">
-  <button onclick="showPage('realtime')">Realtime</button>
-  <button onclick="showPage('graph')">Graph</button>
-  <button onclick="showPage('table')">Data</button>
+<!-- NAV -->
+<div class="nav flex gap-4 p-3 bg-slate-900">
+  <button onclick="page('rt')" id="btn-rt" class="active">Realtime</button>
+  <button onclick="page('an')" id="btn-an">Analytics</button>
+  <button onclick="page('tb')" id="btn-tb">Data</button>
 </div>
 
 <!-- REALTIME -->
-<div id="realtime" class="page active">
-  <div class="grid">
-    <div id="g_pm25" class="card"></div>
-    <div id="g_temp" class="card"></div>
-    <div id="g_humi" class="card"></div>
-    <div id="g_co2" class="card"></div>
-    <div id="g_noise" class="card"></div>
-    <div id="g_lux" class="card"></div>
-  </div>
+<div id="rt" class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+
+<div class="glass text-center">
+PM2.5
+<div class="gauge-wrap">
+<canvas id="g1"></canvas>
+<div id="v1" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+PM10
+<div class="gauge-wrap">
+<canvas id="g2"></canvas>
+<div id="v2" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+CO2
+<div class="gauge-wrap">
+<canvas id="g3"></canvas>
+<div id="v3" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+TEMP
+<div class="gauge-wrap">
+<canvas id="g4"></canvas>
+<div id="v4" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+HUMI
+<div class="gauge-wrap">
+<canvas id="g5"></canvas>
+<div id="v5" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+LUX
+<div class="gauge-wrap">
+<canvas id="g6"></canvas>
+<div id="v6" class="gauge-text">0</div>
+</div>
+</div>
+
+<div class="glass text-center">
+NOISE
+<div class="gauge-wrap">
+<canvas id="g7"></canvas>
+<div id="v7" class="gauge-text">0</div>
+</div>
+</div>
+
 </div>
 
 <!-- GRAPH -->
-<div id="graph" class="page">
-  <div id="chart" class="chart"></div>
+<div id="an" class="p-4 hidden">
+<div class="glass">
+<canvas id="chart"></canvas>
+</div>
 </div>
 
 <!-- TABLE -->
-<div id="table" class="page">
-  <table class="table" id="dataTable"></table>
+<div id="tb" class="p-4 hidden">
+<table id="table" class="w-full text-sm"></table>
 </div>
 
 <script>
 
 const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv";
 
-function showPage(p){
-  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
-  document.getElementById(p).classList.add('active');
-}
-
-function csvToJSON(csv){
-  let lines = csv.split("\n");
-  let headers = lines[0].split(",");
-  let result = [];
-
-  for(let i=1;i<lines.length;i++){
-    let row = lines[i].split(",");
-    if(row.length < headers.length) continue;
-
-    let obj = {};
-    headers.forEach((h,j)=> obj[h.trim()] = row[j]);
-    result.push(obj);
-  }
-  return result;
-}
-
-/* COLOR LOGIC */
-function getColor(v, max){
-  let p = v/max;
-  if(p < 0.5) return "green";
-  if(p < 0.75) return "yellow";
-  return "red";
+/* NAV */
+function page(p){
+  ["rt","an","tb"].forEach(x=>{
+    document.getElementById(x).classList.add("hidden");
+    document.getElementById("btn-"+x).classList.remove("active");
+  });
+  document.getElementById(p).classList.remove("hidden");
+  document.getElementById("btn-"+p).classList.add("active");
 }
 
 /* GAUGE */
-function createGauge(id, name, val, max){
-
-  let chart = echarts.init(document.getElementById(id));
-
-  let percent = val/max;
-
-  chart.setOption({
-    series: [{
-      type: 'gauge',
-      startAngle: 180,
-      endAngle: 0,
-
-      min: 0,
-      max: max,
-
-      progress: {
-        show: true,
-        width: 14
-      },
-
-      axisLine: {
-        lineStyle: {
-          width: 14,
-          color: [
-            [0.5, '#00ffcc'],
-            [0.75, '#ffcc00'],
-            [1, '#ff3b3b']
-          ]
-        }
-      },
-
-      pointer: { show:false },
-
-      detail: {
-        valueAnimation:true,
-        fontSize:22,
-        color: percent<0.5 ? "#00ffcc" : percent<0.75 ? "#ffcc00" : "#ff3b3b"
-      },
-
-      title: {
-        offsetCenter:[0,"70%"],
-        color:"#aaa"
-      },
-
-      data:[{ value: val, name:name }]
-    }]
-  });
-
-  /* GLOW */
-  let card = document.getElementById(id);
-  card.classList.remove("glow-green","glow-yellow","glow-red");
-
-  let c = getColor(val,max);
-  card.classList.add("glow-"+c);
+function gauge(id,color){
+ return new Chart(document.getElementById(id),{
+  type:"doughnut",
+  data:{datasets:[{data:[0,100],backgroundColor:[color,"#111"],borderWidth:0}]},
+  options:{
+    circumference:240,
+    rotation:240,
+    cutout:"85%",
+    animation:{duration:800},
+    plugins:{legend:{display:false},tooltip:{enabled:false}}
+  }
+ });
 }
 
-/* LOAD DATA */
-function loadData(){
-  fetch(URL)
-  .then(res=>res.text())
-  .then(csv=>{
+/* INIT */
+let g=[
+ gauge("g1","#f97316"),
+ gauge("g2","#eab308"),
+ gauge("g3","#10b981"),
+ gauge("g4","#3b82f6"),
+ gauge("g5","#06b6d4"),
+ gauge("g6","#f59e0b"),
+ gauge("g7","#ec4899")
+];
 
-    let data = csvToJSON(csv).filter(d=>d["PM2.5"]);
-    let latest = data[data.length-1];
-
-    createGauge("g_pm25","PM2.5",+latest["PM2.5"],200);
-    createGauge("g_temp","Temp °C",+latest["Temp"],50);
-    createGauge("g_humi","Humidity %",+latest["Humi"],100);
-    createGauge("g_co2","CO2 ppm",+latest["CO2"],2000);
-    createGauge("g_noise","Noise dB",+latest["Noise"],120);
-    createGauge("g_lux","Lux",+latest["Lux"],2000);
-
-    /* GRAPH */
-    let times = data.slice(-50).map(d=>d.Time);
-    let pm25 = data.slice(-50).map(d=>+d["PM2.5"]);
-
-    let chart = echarts.init(document.getElementById('chart'));
-
-    chart.setOption({
-      tooltip:{ trigger:'axis' },
-      xAxis:{ type:'category', data:times },
-      yAxis:{ type:'value' },
-      dataZoom:[
-        { type:'inside' },
-        { type:'slider' }
-      ],
-      series:[{
-        data:pm25,
-        type:'line',
-        smooth:true,
-        areaStyle:{ opacity:0.2 }
-      }]
-    });
-
-  });
+/* COLOR LOGIC */
+function color(v,max){
+ let p=v/max;
+ if(p>0.75) return ["#ff3b3b","glow-red"];
+ if(p>0.5) return ["#ffcc00","glow-yellow"];
+ return ["#00ffcc","glow-green"];
 }
 
-/* CLICK GAUGE → GRAPH */
-document.querySelectorAll(".card").forEach(c=>{
-  c.addEventListener("click",()=>{
-    showPage("graph");
-  });
+/* UPDATE */
+function updateGauge(i,val,max){
+ let [c,glow]=color(val,max);
+
+ g[i].data.datasets[0].data=[val,Math.max(0,max-val)];
+ g[i].data.datasets[0].backgroundColor[0]=c;
+ g[i].update();
+
+ let el=document.getElementById("v"+(i+1));
+ el.innerText=Math.round(val);
+ el.style.color=c;
+
+ let card=el.closest(".glass");
+ card.classList.remove("glow-green","glow-yellow","glow-red");
+ card.classList.add(glow);
+}
+
+/* CSV */
+function csv(t){
+ let r=t.split("\n").map(x=>x.split(","));
+ return r.slice(1);
+}
+
+/* GRAPH */
+let chart=new Chart(document.getElementById("chart"),{
+ type:"line",
+ data:{labels:[],datasets:[{data:[],borderColor:"#38bdf8",fill:true}]},
+ options:{responsive:true}
 });
 
-/* RUN */
-loadData();
-setInterval(loadData,5000);
+/* LOAD */
+async function load(){
+ let res=await fetch(URL);
+ let txt=await res.text();
+ let d=csv(txt).filter(x=>x.length>5);
 
-/* RESIZE */
-window.addEventListener('resize', ()=>{
-  document.querySelectorAll('.card').forEach(c=>{
-    let chart = echarts.getInstanceByDom(c);
-    if(chart) chart.resize();
-  });
+ let last=d[d.length-1];
+
+ updateGauge(0,+last[4],100);
+ updateGauge(1,+last[5],150);
+ updateGauge(2,+last[10],2000);
+ updateGauge(3,+last[6],50);
+ updateGauge(4,+last[7],100);
+ updateGauge(5,+last[8],5000);
+ updateGauge(6,+last[9],120);
+
+ /* GRAPH */
+ let t=d.slice(-50);
+ chart.data.labels=t.map(x=>x[0]);
+ chart.data.datasets[0].data=t.map(x=>x[4]);
+ chart.update();
+
+ /* TABLE */
+ let tb=document.getElementById("table");
+ tb.innerHTML="";
+ t.reverse().forEach(r=>{
+  tb.innerHTML+=`<tr>${r.map(x=>`<td>${x}</td>`).join("")}</tr>`;
+ });
+}
+
+/* CLICK GAUGE */
+document.querySelectorAll(".glass").forEach(c=>{
+ c.onclick=()=>page("an");
 });
+
+/* LOOP */
+load();
+setInterval(load,5000);
 
 </script>
 
