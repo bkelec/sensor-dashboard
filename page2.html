@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environmental Monitoring System V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Kanit', sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+        .nav-btn {
+            transition: 0.3s;
+            color: #94a3b8;
+        }
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- ส่วนหัวและเมนู -->
+    <nav class="sticky top-0 z-50 bg-slate-900/90 border-b border-white/10 p-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl font-bold text-blue-400">ENV MONITOR V2</h1>
+            <div class="flex gap-2 bg-black/20 p-1 rounded-lg">
+                <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-6 py-2 rounded-md text-sm">เรียลไทม์</button>
+                <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-6 py-2 rounded-md text-sm">การวิเคราะห์</button>
+            </div>
+            <div class="text-xs text-slate-400">
+                อัปเดตล่าสุด: <span id="last-update" class="text-blue-300">--:--:--</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- หน้าที่ 1: Real-time -->
+        <div id="page-realtime" class="page active">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+                <!-- การ์ดตัวเลข -->
+                <div class="glass-card p-4 text-center border-t-4 border-orange-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">PM 2.5</p>
+                    <p id="v-pm25" class="text-2xl font-bold text-orange-400">--</p>
+                    <p class="text-[8px] opacity-50">µg/m³</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-yellow-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">PM 10</p>
+                    <p id="v-pm10" class="text-2xl font-bold text-yellow-500">--</p>
+                    <p class="text-[8px] opacity-50">µg/m³</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-emerald-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">CO2</p>
+                    <p id="v-co2" class="text-2xl font-bold text-emerald-400">--</p>
+                    <p class="text-[8px] opacity-50">ppm</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-blue-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">TEMP</p>
+                    <p id="v-temp" class="text-2xl font-bold text-blue-400">--</p>
+                    <p class="text-[8px] opacity-50">°C</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-cyan-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">HUMI</p>
+                    <p id="v-humi" class="text-2xl font-bold text-cyan-400">--</p>
+                    <p class="text-[8px] opacity-50">%</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-amber-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">LUX</p>
+                    <p id="v-lux" class="text-2xl font-bold text-amber-400">--</p>
+                    <p class="text-[8px] opacity-50">lx</p>
+                </div>
+                <div class="glass-card p-4 text-center border-t-4 border-pink-500">
+                    <p class="text-[10px] uppercase text-slate-400 mb-1">NOISE</p>
+                    <p id="v-noise" class="text-2xl font-bold text-pink-400">--</p>
+                    <p class="text-[8px] opacity-50">dB</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 h-[400px]">
+                <h3 class="text-sm font-semibold mb-4">กราฟติดตามผล PM 2.5 (30 ข้อมูลล่าสุด)</h3>
+                <canvas id="liveChart"></canvas>
+            </div>
+        </div>
+
+        <!-- หน้าที่ 2: Analytics -->
+        <div id="page-analytics" class="page">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-card p-6 h-[320px]">
+                    <h3 class="text-sm font-semibold mb-4 text-orange-400">แนวโน้มฝุ่น PM 2.5 และ PM 10</h3>
+                    <canvas id="anPM"></canvas>
+                </div>
+                <div class="glass-card p-6 h-[320px]">
+                    <h3 class="text-sm font-semibold mb-4 text-blue-400">อุณหภูมิและความชื้น</h3>
+                    <canvas id="anTH"></canvas>
+                </div>
+                <div class="glass-card p-6 h-[320px]">
+                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">ปริมาณ CO2</h3>
+                    <canvas id="anCO2"></canvas>
+                </div>
+                <div class="glass-card p-6 h-[320px]">
+                    <h3 class="text-sm font-semibold mb-4 text-amber-400">ความเข้มแสง (Lux)</h3>
+                    <canvas id="anLux"></canvas>
+                </div>
+                <div class="glass-card p-6 h-[320px] lg:col-span-2">
+                    <h3 class="text-sm font-semibold mb-4 text-pink-400">ระดับเสียงย้อนหลัง (dB)</h3>
+                    <canvas id="anNoise"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
+        
+        // ลำดับคอลัมน์: 0:Timestamp, 2:Time, 4:PM25, 5:PM10, 6:Temp, 7:Humi, 8:Lux, 9:Noise, 10:CO2
+        const COL = { TIME: 2, PM25: 4, PM10: 5, TEMP: 6, HUMI: 7, LUX: 8, NOISE: 9, CO2: 10 };
+        
+        let charts = {};
+
+        function switchPage(p) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            document.getElementById('btn-' + p).classList.add('active');
+        }
+
+        function initChart(id, datasets) {
+            return new Chart(document.getElementById(id), {
+                type: 'line',
+                data: { labels: [], datasets: datasets.map(d => ({ ...d, tension: 0.4, pointRadius: 0, borderWidth: 2 })) },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 11 } } } }
+                }
+            });
+        }
+
+        async function updateData() {
+            try {
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                const rows = data.split('\n').map(r => r.split(',')).slice(1).filter(r => r.length > 5);
+                
+                if (rows.length === 0) return;
+
+                const latest = rows[rows.length - 1];
+                const history = rows.slice(-50); // ดึง 50 แถวล่าสุดมาวิเคราะห์
+
+                // อัปเดตตัวเลข
+                document.getElementById('v-pm25').innerText = latest[COL.PM25];
+                document.getElementById('v-pm10').innerText = latest[COL.PM10];
+                document.getElementById('v-co2').innerText = latest[COL.CO2];
+                document.getElementById('v-temp').innerText = latest[COL.TEMP];
+                document.getElementById('v-humi').innerText = latest[COL.HUMI];
+                document.getElementById('v-lux').innerText = latest[COL.LUX];
+                document.getElementById('v-noise').innerText = latest[COL.NOISE];
+                document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+
+                const labels = history.map(r => r[COL.TIME]);
+
+                // อัปเดตกราฟ Live
+                charts.live.data.labels = labels.slice(-20);
+                charts.live.data.datasets[0].data = history.slice(-20).map(r => r[COL.PM25]);
+                charts.live.update('none');
+
+                // อัปเดตกราฟ Analytics
+                charts.anPM.data.labels = labels;
+                charts.anPM.data.datasets[0].data = history.map(r => r[COL.PM25]);
+                charts.anPM.data.datasets[1].data = history.map(r => r[COL.PM10]);
+                charts.anPM.update('none');
+
+                charts.anTH.data.labels = labels;
+                charts.anTH.data.datasets[0].data = history.map(r => r[COL.TEMP]);
+                charts.anTH.data.datasets[1].data = history.map(r => r[COL.HUMI]);
+                charts.anTH.update('none');
+
+                charts.anCO2.data.labels = labels;
+                charts.anCO2.data.datasets[0].data = history.map(r => r[COL.CO2]);
+                charts.anCO2.update('none');
+
+                charts.anLux.data.labels = labels;
+                charts.anLux.data.datasets[0].data = history.map(r => r[COL.LUX]);
+                charts.anLux.update('none');
+
+                charts.anNoise.data.labels = labels;
+                charts.anNoise.data.datasets[0].data = history.map(r => r[COL.NOISE]);
+                charts.anNoise.update('none');
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+            }
+        }
+
+        window.onload = () => {
+            charts.live = initChart('liveChart', [{ label: 'PM 2.5 (Real-time)', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }]);
+            
+            charts.anPM = initChart('anPM', [
+                { label: 'PM 2.5', borderColor: '#f97316' },
+                { label: 'PM 10', borderColor: '#eab308' }
+            ]);
+
+            charts.anTH = initChart('anTH', [
+                { label: 'Temp (°C)', borderColor: '#3b82f6' },
+                { label: 'Humi (%)', borderColor: '#06b6d4' }
+            ]);
+
+            charts.anCO2 = initChart('anCO2', [{ label: 'CO2 (ppm)', borderColor: '#10b981' }]);
+            charts.anLux = initChart('anLux', [{ label: 'Lux', borderColor: '#f59e0b' }]);
+            charts.anNoise = initChart('anNoise', [{ label: 'Noise (dB)', borderColor: '#ec4899' }]);
+
+            updateData();
+            setInterval(updateData, 10000); // อัปเดตทุก 10 วินาที
+        };
+    </script>
+</body>
+</html>
