@@ -457,8 +457,55 @@
 // CONFIG
 // ══════════════════════════════════════════
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
-const PROXY   = 'https://api.allorigins.win/raw?url=';
 const REFRESH_INTERVAL = 60000; // 60s
+
+// Fetch strategies: try in order until one succeeds
+const FETCH_STRATEGIES = [
+  {
+    name: 'Direct CSV',
+    fetch: async (url) => {
+      const res = await fetch(url + '&t=' + Date.now(), {
+        mode: 'cors', cache: 'no-cache',
+        headers: { 'Accept': 'text/csv,text/plain,*/*' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }
+  },
+  {
+    name: 'allorigins',
+    fetch: async (url) => {
+      const res = await fetch(
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(url) + '&t=' + Date.now()
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }
+  },
+  {
+    name: 'corsproxy.io',
+    fetch: async (url) => {
+      const res = await fetch(
+        'https://corsproxy.io/?' + encodeURIComponent(url) + '&t=' + Date.now()
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }
+  },
+  {
+    name: 'htmldriven',
+    fetch: async (url) => {
+      const apiUrl = 'https://cors-anywhere.herokuapp.com/' + url;
+      const res = await fetch(apiUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }
+  }
+];
+
+let activeStrategy = 0; // track which strategy last worked
 
 // ══════════════════════════════════════════
 // METRICS CONFIG
@@ -527,41 +574,47 @@ function showPage(id, btn) {
 async function fetchData() {
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
-  document.getElementById('statusText').textContent = 'SYNCING';
-  document.getElementById('statusDot').style.background = '#ffd600';
-  document.getElementById('statusDot').style.boxShadow = '0 0 8px #ffd600';
-
-  try {
-    const res = await fetch(PROXY + encodeURIComponent(CSV_URL) + '&t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const parsed = parseCSV(text);
-    if (parsed.length < 2) throw new Error('No data');
-
-    allData = parseRows(parsed);
-    document.getElementById('errorBox').style.display = 'none';
-
-    updateRealtimePage();
-    updateChartsPage();
-    updateDataPage();
-
-    document.getElementById('statusText').textContent = 'LIVE';
-    document.getElementById('statusDot').style.background = 'var(--good)';
-    document.getElementById('statusDot').style.boxShadow = '0 0 8px var(--good)';
-    document.getElementById('lastUpdate').textContent = 'UPDATED ' + new Date().toLocaleTimeString('th-TH');
-  } catch(e) {
-    console.error(e);
-    document.getElementById('errorBox').style.display = 'block';
-    document.getElementById('errorBox').textContent = 'ข้อผิดพลาด: ' + e.message;
-    document.getElementById('statusText').textContent = 'ERROR';
-    document.getElementById('statusDot').style.background = 'var(--danger)';
-    document.getElementById('statusDot').style.boxShadow = '0 0 8px var(--danger)';
-
-    if (allData.length === 0) {
-      document.getElementById('gaugeContainer').innerHTML = `<div class="error-box" style="display:block">ไม่สามารถโหลดข้อมูลได้: ${e.message}</div>`;
-    }
+  setStatus('syncing');
+  // Try strategies starting from last known-good one
+  const order = [activeStrategy,...FETCH_STRATEGIES.map((_,i)=>i).filter(i=>i!==activeStrategy)];
+  let lastErr = null;
+  for (const idx of order) {
+    const strategy = FETCH_STRATEGIES[idx];
+    setSourceBadge('trying: '+strategy.name+'…');
+    try {
+      const text = await strategy.fetch(CSV_URL);
+      if (!text || text.trim().length < 10) throw new Error('Empty response');
+      if (text.trim().startsWith('<')) throw new Error('Got HTML instead of CSV');
+      const parsed = parseCSV(text);
+      if (parsed.length < 2) throw new Error('No data rows');
+      activeStrategy = idx;
+      allData = parseRows(parsed);
+      document.getElementById('errorBox').style.display = 'none';
+      updateRealtimePage(); updateChartsPage(); updateDataPage();
+      setStatus('live'); setSourceBadge('source: '+strategy.name);
+      document.getElementById('lastUpdate').textContent = 'UPDATED '+new Date().toLocaleTimeString('th-TH');
+      btn.classList.remove('spinning'); return;
+    } catch(e) { console.warn('['+strategy.name+'] failed:',e.message); lastErr=e; }
+  }
+  console.error('All fetch strategies failed:',lastErr);
+  document.getElementById('errorBox').style.display = 'block';
+  document.getElementById('errorBox').textContent = 'ทุก method ล้มเหลว ('+lastErr?.message+') — ตรวจสอบว่า Google Sheet ถูก Publish เป็น CSV แล้ว';
+  setStatus('error'); setSourceBadge('source: failed');
+  if (allData.length === 0) {
+    document.getElementById('gaugeContainer').innerHTML = '<div class="error-box" style="display:block">ไม่สามารถโหลดข้อมูลได้<br><small style="opacity:.7">File › Share › Publish to web › CSV</small></div>';
   }
   btn.classList.remove('spinning');
+}
+function setStatus(state) {
+  const dot=document.getElementById('statusDot'),text=document.getElementById('statusText');
+  const map={syncing:{color:'#ffd600',label:'SYNCING'},live:{color:'var(--good)',label:'LIVE'},error:{color:'var(--danger)',label:'ERROR'}};
+  const s=map[state]||map.syncing;
+  dot.style.background=s.color; dot.style.boxShadow='0 0 8px '+s.color; text.textContent=s.label;
+}
+function setSourceBadge(txt) {
+  let el=document.getElementById('sourceBadge');
+  if(!el){el=document.createElement('div');el.id='sourceBadge';el.style.cssText='font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px';document.getElementById('lastUpdate').insertAdjacentElement('beforebegin',el);}
+  el.textContent=txt.toUpperCase();
 }
 
 function parseCSV(text) {
