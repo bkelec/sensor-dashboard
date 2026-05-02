@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environmental Monitoring System</title>
+    <title>Environmental Monitoring System V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -14,435 +14,280 @@
             --card-border: rgba(255, 255, 255, 0.05);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --nav-bg: rgba(2, 6, 23, 0.8);
-            --grid-color: rgba(255, 255, 255, 0.05);
-        }
-
-        [data-theme="light"] {
-            --bg-color: #f1f5f9;
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --card-border: rgba(0, 0, 0, 0.05);
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --nav-bg: rgba(248, 250, 252, 0.8);
-            --grid-color: rgba(0, 0, 0, 0.05);
+            --accent: #3b82f6;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: 'Kanit', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
-            overflow-x: hidden;
-        }
-
-        /* ส่วนหัวข้อที่แก้ไขได้ */
-        .editable-title {
-            outline: none;
-            padding: 2px 8px;
-            border-radius: 6px;
-            transition: all 0.2s;
-            cursor: text;
-        }
-        .editable-title:hover {
-            background: rgba(59, 130, 246, 0.1);
-        }
-        .editable-title:focus {
-            background: rgba(59, 130, 246, 0.15);
-            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
         }
 
         .glass-card {
             background: var(--card-bg);
             backdrop-filter: blur(12px);
             border: 1px solid var(--card-border);
-            border-radius: 1.25rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+
         .nav-btn {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
             color: var(--text-muted);
+            cursor: pointer;
         }
+
         .nav-btn.active {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.15);
             color: #3b82f6;
-            border-bottom: 2px solid #3b82f6;
+            font-weight: 600;
         }
-        .page-content {
-            display: none;
-            animation: fadeIn 0.4s ease-out;
-        }
-        .page-content.active {
-            display: block;
-        }
+
+        .page-content { display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.4s ease-out; }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .value-display { font-family: 'JetBrains Mono', monospace; }
-        .gauge-mini-container {
-            position: relative;
-            height: 120px;
-            width: 100%;
-        }
-        .gauge-center-text {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding-top: 15px;
-        }
-        .theme-toggle {
-            cursor: pointer;
-            padding: 8px;
+
+        .value-font { font-family: 'JetBrains Mono', monospace; }
+        
+        .status-dot {
+            height: 8px; width: 8px;
+            background-color: #22c55e;
             border-radius: 50%;
-            transition: background 0.3s;
-        }
-        .theme-toggle:hover {
-            background: rgba(59, 130, 246, 0.1);
+            display: inline-block;
+            margin-right: 5px;
+            box-shadow: 0 0 8px #22c55e;
         }
     </style>
 </head>
-<body class="min-h-screen">
-    <nav class="sticky top-0 z-50 border-b border-white/5 bg-[var(--nav-bg)] backdrop-blur-md">
-        <div class="max-w-[1600px] mx-auto px-4 md:px-8">
-            <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
-                <div class="flex items-center gap-4">
-                    <h1 contenteditable="true" spellcheck="false" class="editable-title text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">ENV-MONITOR</h1>
-                    
-                    <div class="h-6 w-[1px] bg-slate-800 hidden md:block"></div>
-                    <div id="nav-tabs" class="flex gap-1 bg-white/5 p-1 rounded-xl">
-                        <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-4 py-2 rounded-lg text-sm font-medium">Real-time</button>
-                        <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Analytics (24h)</button>
-                        <button onclick="switchPage('data')" id="btn-data" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Data Logs</button>
-                    </div>
+<body class="min-h-screen pb-12">
+    <!-- Navigation Bar -->
+    <nav class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-lg border-b border-white/5 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-6">
+                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                    ENV-MONITOR V2
+                </h1>
+                <div class="flex gap-1 bg-white/5 p-1 rounded-xl">
+                    <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-4 py-2 rounded-lg text-sm">เรียลไทม์</button>
+                    <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-4 py-2 rounded-lg text-sm">การวิเคราะห์</button>
                 </div>
-                <div class="flex items-center gap-6">
-                    <button onclick="toggleTheme()" class="theme-toggle flex items-center justify-center border border-white/10">
-                        <span id="theme-icon" class="text-lg">🌙</span>
-                    </button>
-                    
-                    <div class="flex items-center gap-4 text-xs">
-                        <span class="text-slate-500">Device: <span id="device-id" class="text-[var(--text-main)]">Scanning...</span></span>
-                        <div class="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span id="last-update" class="value-display text-[var(--text-main)]">--:--:--</span>
-                        </div>
-                    </div>
+            </div>
+            <div class="flex items-center gap-4 text-xs">
+                <div class="flex items-center text-slate-400">
+                    <span class="status-dot"></span> เชื่อมต่อสำเร็จ
                 </div>
+                <div id="last-update" class="text-blue-400 font-mono">--:--:--</div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-[1600px] mx-auto p-4 md:p-8">
+    <main class="max-w-7xl mx-auto px-4 mt-6">
+        <!-- Page 1: Real-time Dashboard -->
         <section id="page-realtime" class="page-content active">
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">PM 2.5</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gPM25"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-pm25" class="text-xl font-bold value-display text-orange-400">0</span>
-                            <span class="text-[8px] opacity-60">µg/m³</span>
-                        </div>
-                    </div>
+            <!-- Sensor Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">PM 2.5</p>
+                    <p id="v-pm25" class="text-2xl font-bold text-orange-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">µg/m³</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">PM 10</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gPM10"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-pm10" class="text-xl font-bold value-display text-yellow-500">0</span>
-                            <span class="text-[8px] opacity-60">µg/m³</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">PM 10</p>
+                    <p id="v-pm10" class="text-2xl font-bold text-yellow-500 value-font">0</p>
+                    <p class="text-[9px] opacity-40">µg/m³</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">CO2</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gCO2"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-co2" class="text-xl font-bold value-display text-emerald-400">0</span>
-                            <span class="text-[8px] opacity-60">PPM</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">CO2</p>
+                    <p id="v-co2" class="text-2xl font-bold text-emerald-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">ppm</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Temp</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gTemp"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-temp" class="text-xl font-bold value-display text-blue-400">0</span>
-                            <span class="text-[8px] opacity-60">°C</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">TEMP</p>
+                    <p id="v-temp" class="text-2xl font-bold text-blue-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">°C</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Humi</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gHumi"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-humi" class="text-xl font-bold value-display text-cyan-400">0</span>
-                            <span class="text-[8px] opacity-60">%</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">HUMI</p>
+                    <p id="v-humi" class="text-2xl font-bold text-cyan-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">%</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Lux</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gLux"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-lux" class="text-xl font-bold value-display text-amber-400">0</span>
-                            <span class="text-[8px] opacity-60">lx</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">LUX</p>
+                    <p id="v-lux" class="text-2xl font-bold text-amber-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">lx</p>
                 </div>
-                <div class="glass-card p-4">
-                    <h4 class="text-[10px] text-[var(--text-muted)] uppercase text-center mb-2">Noise</h4>
-                    <div class="gauge-mini-container">
-                        <canvas id="gNoise"></canvas>
-                        <div class="gauge-center-text">
-                            <span id="val-noise" class="text-xl font-bold value-display text-pink-400">0</span>
-                            <span class="text-[8px] opacity-60">dB</span>
-                        </div>
-                    </div>
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase font-semibold">NOISE</p>
+                    <p id="v-noise" class="text-2xl font-bold text-pink-400 value-font">0</p>
+                    <p class="text-[9px] opacity-40">dB</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6">
-                <div class="glass-card p-6">
-                    <h3 class="text-[var(--text-muted)] uppercase text-xs tracking-widest mb-6">Activity Timeline (PM2.5)</h3>
-                    <div class="h-[300px]">
-                        <canvas id="miniTrendChart"></canvas>
+            <!-- Big Chart -->
+            <div class="glass-card p-6 h-[450px]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-sm font-semibold opacity-80">ความเคลื่อนไหว PM 2.5 (30 นาทีล่าสุด)</h3>
+                    <div class="flex gap-4">
+                        <span class="text-[10px] text-blue-400">● LIVE STREAM</span>
                     </div>
                 </div>
+                <canvas id="live-chart"></canvas>
             </div>
         </section>
 
+        <!-- Page 2: Analytics -->
         <section id="page-analytics" class="page-content">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="glass-card p-6">
-                    <h3 class="text-sm font-semibold mb-4 text-orange-400">PM2.5 vs PM10 (24h Trend)</h3>
-                    <div class="h-[300px]"><canvas id="chartPM"></canvas></div>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-orange-400">แนวโน้ม PM 2.5 และ PM 10</h3>
+                    <canvas id="chart-pm"></canvas>
                 </div>
-                <div class="glass-card p-6">
-                    <h3 class="text-sm font-semibold mb-4 text-blue-400">Temperature & Humidity (24h Trend)</h3>
-                    <div class="h-[300px]"><canvas id="chartClimate"></canvas></div>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-blue-400">อุณหภูมิและความชื้น</h3>
+                    <canvas id="chart-th"></canvas>
                 </div>
-                <div class="glass-card p-6">
-                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">CO2 Concentration (24h Trend)</h3>
-                    <div class="h-[250px]"><canvas id="chartCO2"></canvas></div>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">ปริมาณก๊าซคาร์บอนไดออกไซด์ (CO2)</h3>
+                    <canvas id="chart-co2"></canvas>
                 </div>
-                <div class="glass-card p-6">
-                    <h3 class="text-sm font-semibold mb-4 text-amber-400">Light Intensity - Lux (24h Trend)</h3>
-                    <div class="h-[250px]"><canvas id="chartLux"></canvas></div>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-amber-400">ความเข้มแสง (Lux)</h3>
+                    <canvas id="chart-lux"></canvas>
                 </div>
-                <div class="glass-card p-6 lg:col-span-2">
-                    <h3 class="text-sm font-semibold mb-4 text-pink-400">Noise Level - dB (24h Trend)</h3>
-                    <div class="h-[250px]"><canvas id="chartNoise"></canvas></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="page-data" class="page-content">
-            <div class="glass-card overflow-hidden">
-                <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                    <h3 class="font-semibold text-xl text-[var(--text-main)]">System Logs</h3>
-                    <button onclick="fetchData()" class="text-xs bg-blue-600/20 text-blue-400 border border-blue-600/30 px-4 py-2 rounded-full hover:bg-blue-600/40">Manual Sync</button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="bg-black/10 text-[var(--text-muted)] uppercase text-[10px] tracking-wider">
-                                <th class="p-4 font-medium border-b border-white/5">Time</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">PM2.5</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">PM10</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">CO2</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">Temp</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">Humi</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-center">Lux</th>
-                                <th class="p-4 font-medium border-b border-white/5 text-right">Noise</th>
-                            </tr>
-                        </thead>
-                        <tbody id="data-table-body" class="divide-y divide-white/5"></tbody>
-                    </table>
+                <div class="glass-card p-6 h-[350px] lg:col-span-2">
+                    <h3 class="text-sm font-semibold mb-4 text-pink-400">ระดับเสียงย้อนหลัง (dB)</h3>
+                    <canvas id="chart-noise"></canvas>
                 </div>
             </div>
         </section>
     </main>
 
     <script>
+        // URL จาก Google Sheets (CSV)
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
-        const IDX = { TIME:0, ID:3, PM25:4, PM10:5, TEMP:6, HUMI:7, LUX:8, NOISE:9, CO2:10 };
-        const LIMITS = { PM25:100, PM10:150, CO2:2000, TEMP:50, HUMI:100, LUX:5000, NOISE:120 };
+        
+        // ตำแหน่งคอลัมน์ที่แก้ไขตามรูปภาพ: 
+        // 0: Timestamp, 1: Date, 2: Time, 3: DeviceID, 4: PM25, 5: PM10, 6: Temp, 7: Humi, 8: Lux, 9: Noise, 10: CO2
+        const COL = { TIME: 2, PM25: 4, PM10: 5, TEMP: 6, HUMI: 7, LUX: 8, NOISE: 9, CO2: 10 };
         
         let charts = {};
-        let currentTheme = 'dark';
 
-        // บันทึกชื่อที่แก้ไขไว้ใน LocalStorage เพื่อให้รีเฟรชหน้าแล้วไม่หาย
-        const titleEl = document.querySelector('.editable-title');
-        const savedTitle = localStorage.getItem('dashboard-title');
-        if (savedTitle) titleEl.innerText = savedTitle;
-
-        titleEl.addEventListener('blur', () => {
-            localStorage.setItem('dashboard-title', titleEl.innerText);
-        });
-
-        function toggleTheme() {
-            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.body.setAttribute('data-theme', currentTheme);
-            document.getElementById('theme-icon').innerText = currentTheme === 'dark' ? '🌙' : '☀️';
-            updateChartThemes();
+        function switchPage(p) {
+            document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            document.getElementById('btn-' + p).classList.add('active');
         }
 
-        function updateChartThemes() {
-            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
-            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
-            Object.values(charts).forEach(chart => {
-                if (chart.options.scales && chart.options.scales.y) {
-                    chart.options.scales.y.grid.color = gridColor;
-                    chart.options.scales.y.ticks.color = textColor;
-                    chart.options.scales.x.ticks.color = textColor;
-                    chart.update('none');
-                }
-            });
-        }
-
-        function switchPage(pageId) {
-            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`page-${pageId}`).classList.add('active');
-            document.getElementById(`btn-${pageId}`).classList.add('active');
-        }
-
-        function createMiniGauge(id, color) {
-            return new Chart(document.getElementById(id), {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [0, 100],
-                        backgroundColor: [color, 'rgba(128,128,128,0.1)'],
-                        borderWidth: 0,
-                        circumference: 240,
-                        rotation: 240,
-                        cutout: '85%'
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
-                }
-            });
-        }
-
-        async function fetchData() {
-            try {
-                const response = await fetch(csvUrl);
-                const data = await response.text();
-                const rows = data.split('\n').map(row => row.split(','));
-                const sensorData = rows.slice(1).filter(r => r.length > 5);
-                if(sensorData.length > 0) {
-                    const latest = sensorData[sensorData.length - 1];
-                    const dayLogs = sensorData.slice(-1440); 
-                    updateUI(latest, dayLogs);
-                }
-            } catch (e) { console.error("Error:", e); }
-        }
-
-        function updateUI(latest, logs) {
-            document.getElementById('device-id').innerText = latest[IDX.ID];
-            document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
-            const updateG = (chart, val, max, elId) => {
-                const num = parseFloat(val) || 0;
-                chart.data.datasets[0].data = [num, Math.max(0, max - num)];
-                chart.update();
-                document.getElementById(elId).innerText = Math.round(num);
-            };
-            updateG(charts.gPM25, latest[IDX.PM25], LIMITS.PM25, 'val-pm25');
-            updateG(charts.gPM10, latest[IDX.PM10], LIMITS.PM10, 'val-pm10');
-            updateG(charts.gCO2, latest[IDX.CO2], LIMITS.CO2, 'val-co2');
-            updateG(charts.gTemp, latest[IDX.TEMP], LIMITS.TEMP, 'val-temp');
-            updateG(charts.gHumi, latest[IDX.HUMI], LIMITS.HUMI, 'val-humi');
-            updateG(charts.gLux, latest[IDX.LUX], LIMITS.LUX, 'val-lux');
-            updateG(charts.gNoise, latest[IDX.NOISE], LIMITS.NOISE, 'val-noise');
-
-            const times = logs.map((l, index) => {
-                const fullTime = l[IDX.TIME].split(' ')[1] || '';
-                if (logs.length > 50 && index % Math.floor(logs.length / 10) !== 0) return '';
-                return fullTime;
-            });
-            const recentLogs = logs.slice(-50);
-            charts.miniTrend.data.labels = recentLogs.map(l => l[IDX.TIME].split(' ')[1] || '');
-            charts.miniTrend.data.datasets[0].data = recentLogs.map(l => l[IDX.PM25]);
-            charts.miniTrend.update('none');
-            charts.pm.data.labels = times;
-            charts.pm.data.datasets[0].data = logs.map(l => l[IDX.PM25]);
-            charts.pm.data.datasets[1].data = logs.map(l => l[IDX.PM10]);
-            charts.pm.update('none');
-            charts.climate.data.labels = times;
-            charts.climate.data.datasets[0].data = logs.map(l => l[IDX.TEMP]);
-            charts.climate.data.datasets[1].data = logs.map(l => l[IDX.HUMI]);
-            charts.climate.update('none');
-            charts.co2.data.labels = times;
-            charts.co2.data.datasets[0].data = logs.map(l => l[IDX.CO2]);
-            charts.co2.update('none');
-            charts.lux.data.labels = times;
-            charts.lux.data.datasets[0].data = logs.map(l => l[IDX.LUX]);
-            charts.lux.update('none');
-            charts.noise.data.labels = times;
-            charts.noise.data.datasets[0].data = logs.map(l => l[IDX.NOISE]);
-            charts.noise.update('none');
-
-            const tableBody = document.getElementById('data-table-body');
-            tableBody.innerHTML = logs.slice(-50).reverse().map(l => `
-                <tr class="hover:bg-black/5 transition-colors border-b border-black/5">
-                    <td class="p-4 text-[var(--text-muted)] font-mono text-[11px]">${l[IDX.TIME]}</td>
-                    <td class="p-4 text-center font-bold text-orange-400">${Math.round(l[IDX.PM25])}</td>
-                    <td class="p-4 text-center font-bold text-yellow-500">${Math.round(l[IDX.PM10])}</td>
-                    <td class="p-4 text-center font-bold text-emerald-400">${Math.round(l[IDX.CO2])}</td>
-                    <td class="p-4 text-center text-blue-400">${parseFloat(l[IDX.TEMP]).toFixed(1)}</td>
-                    <td class="p-4 text-center text-cyan-400">${Math.round(l[IDX.HUMI])}</td>
-                    <td class="p-4 text-center text-amber-400">${Math.round(l[IDX.LUX])}</td>
-                    <td class="p-4 text-right text-pink-400 font-mono">${Math.round(l[IDX.NOISE])}</td>
-                </tr>
-            `).join('');
-        }
-
-        function createBaseChart(id, datasets) {
-            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
-            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
-            return new Chart(document.getElementById(id), {
+        function createChart(id, datasets, isStacked = false) {
+            return new Chart(document.getElementById(id).getContext('2d'), {
                 type: 'line',
-                data: { labels: [], datasets: datasets },
+                data: { labels: [], datasets: datasets.map(d => ({ 
+                    ...d, 
+                    tension: 0.4, 
+                    pointRadius: 0, 
+                    borderWidth: 2,
+                    fill: d.fill || false 
+                })) },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    elements: { point: { radius: 0 } },
-                    plugins: { legend: { labels: { color: textColor, font: { size: 10 } } } },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Kanit', size: 11 } } } },
                     scales: {
-                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
-                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 }, maxRotation: 0 } }
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
                     }
                 }
             });
         }
 
+        async function updateData() {
+            try {
+                const response = await fetch(csvUrl);
+                const text = await response.text();
+                const rows = text.split('\n').map(r => r.split(',')).slice(1).filter(r => r.length > 5);
+                
+                if (rows.length === 0) return;
+
+                const latest = rows[rows.length - 1];
+                const history = rows.slice(-144); // ดึงข้อมูลย้อนหลัง (144 แถว ~ 1 วัน ถ้าบันทึกทุก 10 นาที)
+
+                // อัปเดตตัวเลขล่าสุด
+                document.getElementById('v-pm25').innerText = latest[COL.PM25];
+                document.getElementById('v-pm10').innerText = latest[COL.PM10];
+                document.getElementById('v-co2').innerText = latest[COL.CO2];
+                document.getElementById('v-temp').innerText = latest[COL.TEMP];
+                document.getElementById('v-humi').innerText = latest[COL.HUMI];
+                document.getElementById('v-lux').innerText = latest[COL.LUX];
+                document.getElementById('v-noise').innerText = latest[COL.NOISE];
+                document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+
+                const times = history.map(h => h[COL.TIME]);
+
+                // อัปเดตกราฟหน้าแรก (Real-time)
+                charts.live.data.labels = times.slice(-30);
+                charts.live.data.datasets[0].data = history.slice(-30).map(h => h[COL.PM25]);
+                charts.live.update('none');
+
+                // อัปเดตกราฟหน้า Analytics
+                charts.anPM.data.labels = times;
+                charts.anPM.data.datasets[0].data = history.map(h => h[COL.PM25]);
+                charts.anPM.data.datasets[1].data = history.map(h => h[COL.PM10]);
+                charts.anPM.update('none');
+
+                charts.anTH.data.labels = times;
+                charts.anTH.data.datasets[0].data = history.map(h => h[COL.TEMP]);
+                charts.anTH.data.datasets[1].data = history.map(h => h[COL.HUMI]);
+                charts.anTH.update('none');
+
+                charts.anCO2.data.labels = times;
+                charts.anCO2.data.datasets[0].data = history.map(h => h[COL.CO2]);
+                charts.anCO2.update('none');
+
+                charts.anLux.data.labels = times;
+                charts.anLux.data.datasets[0].data = history.map(h => h[COL.LUX]);
+                charts.anLux.update('none');
+
+                charts.anNoise.data.labels = times;
+                charts.anNoise.data.datasets[0].data = history.map(h => h[COL.NOISE]);
+                charts.anNoise.update('none');
+
+            } catch (err) {
+                console.error("Fetch Error:", err);
+            }
+        }
+
         window.onload = () => {
-            charts.gPM25 = createMiniGauge('gPM25', '#f97316');
-            charts.gPM10 = createMiniGauge('gPM10', '#eab308');
-            charts.gCO2 = createMiniGauge('gCO2', '#10b981');
-            charts.gTemp = createMiniGauge('gTemp', '#3b82f6');
-            charts.gHumi = createMiniGauge('gHumi', '#06b6d4');
-            charts.gLux = createMiniGauge('gLux', '#f59e0b');
-            charts.gNoise = createMiniGauge('gNoise', '#ec4899');
-            charts.miniTrend = createBaseChart('miniTrendChart', [{ label: 'PM2.5 Activity', borderColor: '#3b82f6', borderWidth: 2, data: [], tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.05)' }]);
-            charts.pm = createBaseChart('chartPM', [{ label: 'PM2.5', borderColor: '#f97316', data: [], tension: 0.3, borderWidth: 1.5 }, { label: 'PM10', borderColor: '#eab308', data: [], tension: 0.3, borderWidth: 1.5 }]);
-            charts.climate = createBaseChart('chartClimate', [{ label: 'Temp', borderColor: '#3b82f6', data: [], tension: 0.3, borderWidth: 1.5 }, { label: 'Humi', borderColor: '#22d3ee', data: [], tension: 0.3, borderWidth: 1.5 }]);
-            charts.co2 = createBaseChart('chartCO2', [{ label: 'CO2 (PPM)', borderColor: '#10b981', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)' }]);
-            charts.lux = createBaseChart('chartLux', [{ label: 'Lux', borderColor: '#f59e0b', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(245, 158, 11, 0.05)' }]);
-            charts.noise = createBaseChart('chartNoise', [{ label: 'Noise (dB)', borderColor: '#ec4899', data: [], tension: 0.3, borderWidth: 1.5, fill: true, backgroundColor: 'rgba(236, 72, 153, 0.05)' }]);
-            fetchData();
-            setInterval(fetchData, 10000);
+            // สร้างกราฟทั้งหมด
+            charts.live = createChart('live-chart', [{ 
+                label: 'PM 2.5 Live', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true 
+            }]);
+
+            charts.anPM = createChart('chart-pm', [
+                { label: 'PM 2.5', borderColor: '#f97316' },
+                { label: 'PM 10', borderColor: '#eab308' }
+            ]);
+
+            charts.anTH = createChart('chart-th', [
+                { label: 'อุณหภูมิ (°C)', borderColor: '#3b82f6' },
+                { label: 'ความชื้น (%)', borderColor: '#06b6d4' }
+            ]);
+
+            charts.anCO2 = createChart('chart-co2', [{ 
+                label: 'CO2 (ppm)', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true 
+            }]);
+
+            charts.anLux = createChart('chart-lux', [{ label: 'แสง (Lux)', borderColor: '#f59e0b' }]);
+
+            charts.anNoise = createChart('chart-noise', [{ label: 'ระดับเสียง (dB)', borderColor: '#ec4899' }]);
+
+            updateData();
+            setInterval(updateData, 15000); // อัปเดตทุก 15 วินาที
         };
     </script>
 </body>
