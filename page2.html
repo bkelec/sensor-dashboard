@@ -6,7 +6,7 @@
     <title>Environmental Monitoring System V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
         body {
             background-color: #0f172a;
@@ -31,6 +31,45 @@
         .page { display: none; }
         .page.active { display: block; animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Gauge Styles */
+        .gauge-container {
+            position: relative;
+            width: 120px;
+            height: 70px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .gauge-bg {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 12px solid #1e293b;
+            border-bottom-color: transparent;
+            transform: rotate(-45deg);
+        }
+        .gauge-fill {
+            position: absolute;
+            top: 0; left: 0;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 12px solid #3b82f6;
+            border-bottom-color: transparent;
+            border-left-color: transparent;
+            transform: rotate(-45deg);
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .gauge-value {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -52,46 +91,87 @@
         <!-- หน้าที่ 1: Real-time -->
         <div id="page-realtime" class="page active">
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-                <!-- การ์ดตัวเลข -->
-                <div class="glass-card p-4 text-center border-t-4 border-orange-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">PM 2.5</p>
-                    <p id="v-pm25" class="text-2xl font-bold text-orange-400">--</p>
-                    <p class="text-[8px] opacity-50">µg/m³</p>
+                
+                <!-- Gauge: PM 2.5 -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">PM 2.5</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-pm25" class="gauge-fill" style="border-color: #f97316;"></div>
+                        <div id="v-pm25" class="gauge-value text-orange-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">µg/m³</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-yellow-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">PM 10</p>
-                    <p id="v-pm10" class="text-2xl font-bold text-yellow-500">--</p>
-                    <p class="text-[8px] opacity-50">µg/m³</p>
+
+                <!-- Gauge: PM 10 -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">PM 10</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-pm10" class="gauge-fill" style="border-color: #eab308;"></div>
+                        <div id="v-pm10" class="gauge-value text-yellow-500">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">µg/m³</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-emerald-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">CO2</p>
-                    <p id="v-co2" class="text-2xl font-bold text-emerald-400">--</p>
-                    <p class="text-[8px] opacity-50">ppm</p>
+
+                <!-- Gauge: CO2 -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">CO2</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-co2" class="gauge-fill" style="border-color: #10b981;"></div>
+                        <div id="v-co2" class="gauge-value text-emerald-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">ppm</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-blue-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">TEMP</p>
-                    <p id="v-temp" class="text-2xl font-bold text-blue-400">--</p>
-                    <p class="text-[8px] opacity-50">°C</p>
+
+                <!-- Gauge: Temp -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">TEMP</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-temp" class="gauge-fill" style="border-color: #3b82f6;"></div>
+                        <div id="v-temp" class="gauge-value text-blue-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">°C</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-cyan-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">HUMI</p>
-                    <p id="v-humi" class="text-2xl font-bold text-cyan-400">--</p>
-                    <p class="text-[8px] opacity-50">%</p>
+
+                <!-- Gauge: Humi -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">HUMI</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-humi" class="gauge-fill" style="border-color: #06b6d4;"></div>
+                        <div id="v-humi" class="gauge-value text-cyan-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">%</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-amber-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">LUX</p>
-                    <p id="v-lux" class="text-2xl font-bold text-amber-400">--</p>
-                    <p class="text-[8px] opacity-50">lx</p>
+
+                <!-- Gauge: Lux -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">LUX</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-lux" class="gauge-fill" style="border-color: #f59e0b;"></div>
+                        <div id="v-lux" class="gauge-value text-amber-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">lx</p>
                 </div>
-                <div class="glass-card p-4 text-center border-t-4 border-pink-500">
-                    <p class="text-[10px] uppercase text-slate-400 mb-1">NOISE</p>
-                    <p id="v-noise" class="text-2xl font-bold text-pink-400">--</p>
-                    <p class="text-[8px] opacity-50">dB</p>
+
+                <!-- Gauge: Noise -->
+                <div class="glass-card p-4 text-center">
+                    <p class="text-[10px] uppercase text-slate-400 mb-2">NOISE</p>
+                    <div class="gauge-container">
+                        <div class="gauge-bg"></div>
+                        <div id="g-noise" class="gauge-fill" style="border-color: #ec4899;"></div>
+                        <div id="v-noise" class="gauge-value text-pink-400">0</div>
+                    </div>
+                    <p class="text-[8px] opacity-50 mt-1">dB</p>
                 </div>
             </div>
 
             <div class="glass-card p-6 h-[400px]">
-                <h3 class="text-sm font-semibold mb-4">กราฟติดตามผล PM 2.5 (30 ข้อมูลล่าสุด)</h3>
+                <h3 class="text-sm font-semibold mb-4 text-slate-300">กราฟติดตามผล PM 2.5 (30 ข้อมูลล่าสุด)</h3>
                 <canvas id="liveChart"></canvas>
             </div>
         </div>
@@ -125,9 +205,8 @@
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
-        
-        // ลำดับคอลัมน์: 0:Timestamp, 2:Time, 4:PM25, 5:PM10, 6:Temp, 7:Humi, 8:Lux, 9:Noise, 10:CO2
         const COL = { TIME: 2, PM25: 4, PM10: 5, TEMP: 6, HUMI: 7, LUX: 8, NOISE: 9, CO2: 10 };
+        const LIMITS = { PM25: 150, PM10: 200, CO2: 2000, TEMP: 50, HUMI: 100, LUX: 1000, NOISE: 120 };
         
         let charts = {};
 
@@ -136,6 +215,13 @@
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('page-' + p).classList.add('active');
             document.getElementById('btn-' + p).classList.add('active');
+        }
+
+        function setGauge(id, value, max) {
+            const percent = Math.min((value / max) * 100, 100);
+            const rotation = (percent * 1.8) - 45; // คำนวณองศาจาก 0-180 เทียบกับ -45 ถึง 135
+            document.getElementById('g-' + id).style.transform = `rotate(${rotation}deg)`;
+            document.getElementById('v-' + id).innerText = Math.round(value);
         }
 
         function initChart(id, datasets) {
@@ -163,16 +249,17 @@
                 if (rows.length === 0) return;
 
                 const latest = rows[rows.length - 1];
-                const history = rows.slice(-50); // ดึง 50 แถวล่าสุดมาวิเคราะห์
+                const history = rows.slice(-50);
 
-                // อัปเดตตัวเลข
-                document.getElementById('v-pm25').innerText = latest[COL.PM25];
-                document.getElementById('v-pm10').innerText = latest[COL.PM10];
-                document.getElementById('v-co2').innerText = latest[COL.CO2];
-                document.getElementById('v-temp').innerText = latest[COL.TEMP];
-                document.getElementById('v-humi').innerText = latest[COL.HUMI];
-                document.getElementById('v-lux').innerText = latest[COL.LUX];
-                document.getElementById('v-noise').innerText = latest[COL.NOISE];
+                // อัปเดต Gauges
+                setGauge('pm25', latest[COL.PM25], LIMITS.PM25);
+                setGauge('pm10', latest[COL.PM10], LIMITS.PM10);
+                setGauge('co2', latest[COL.CO2], LIMITS.CO2);
+                setGauge('temp', latest[COL.TEMP], LIMITS.TEMP);
+                setGauge('humi', latest[COL.HUMI], LIMITS.HUMI);
+                setGauge('lux', latest[COL.LUX], LIMITS.LUX);
+                setGauge('noise', latest[COL.NOISE], LIMITS.NOISE);
+
                 document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
 
                 const labels = history.map(r => r[COL.TIME]);
@@ -228,7 +315,7 @@
             charts.anNoise = initChart('anNoise', [{ label: 'Noise (dB)', borderColor: '#ec4899' }]);
 
             updateData();
-            setInterval(updateData, 10000); // อัปเดตทุก 10 วินาที
+            setInterval(updateData, 10000);
         };
     </script>
 </body>
