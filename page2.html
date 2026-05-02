@@ -3,316 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environmental Monitoring System V2</title>
+    <title>Environmental Monitoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #020617;
+            --card-bg: rgba(15, 23, 42, 0.8);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --nav-bg: rgba(2, 6, 23, 0.8);
+            --grid-color: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.08);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --nav-bg: rgba(255, 255, 255, 0.8);
+            --grid-color: rgba(0, 0, 0, 0.05);
+        }
+
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             font-family: 'Kanit', sans-serif;
+            transition: all 0.3s ease;
+            overflow-x: hidden;
         }
+
+        .editable-title {
+            outline: none;
+            padding: 2px 8px;
+            border-radius: 6px;
+            cursor: text;
+        }
+        .editable-title:focus {
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
         .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+
         .nav-btn {
-            transition: 0.3s;
-            color: #94a3b8;
+            transition: all 0.2s ease;
+            color: var(--text-muted);
         }
         .nav-btn.active {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.15);
             color: #3b82f6;
-            border-bottom: 2px solid #3b82f6;
         }
-        .page { display: none; }
-        .page.active { display: block; animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Gauge Styles */
-        .gauge-container {
+        .page-content { display: none; animation: fadeIn 0.4s ease-out; }
+        .page-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .value-display { font-family: 'JetBrains Mono', monospace; }
+        .gauge-container { position: relative; height: 120px; width: 100%; }
+        .gauge-text {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding-top: 15px;
+        }
+
+        .theme-switch {
+            width: 48px; height: 24px;
+            background: #334155;
+            border-radius: 20px;
             position: relative;
-            width: 120px;
-            height: 70px;
-            margin: 0 auto;
-            overflow: hidden;
+            cursor: pointer;
         }
-        .gauge-bg {
-            width: 120px;
-            height: 120px;
+        .theme-switch::after {
+            content: '';
+            position: absolute; top: 2px; left: 2px;
+            width: 20px; height: 20px;
+            background: white;
             border-radius: 50%;
-            border: 12px solid #1e293b;
-            border-bottom-color: transparent;
-            transform: rotate(-45deg);
+            transition: 0.3s;
         }
-        .gauge-fill {
-            position: absolute;
-            top: 0; left: 0;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 12px solid #3b82f6;
-            border-bottom-color: transparent;
-            border-left-color: transparent;
-            transform: rotate(-45deg);
-            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .gauge-value {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: bold;
-            font-size: 1.25rem;
-        }
+        [data-theme="light"] .theme-switch::after { left: 26px; background: #fbbf24; }
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- ส่วนหัวและเมนู -->
-    <nav class="sticky top-0 z-50 bg-slate-900/90 border-b border-white/10 p-4">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <h1 class="text-xl font-bold text-blue-400">ENV MONITOR V2</h1>
-            <div class="flex gap-2 bg-black/20 p-1 rounded-lg">
-                <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-6 py-2 rounded-md text-sm">เรียลไทม์</button>
-                <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-6 py-2 rounded-md text-sm">การวิเคราะห์</button>
-            </div>
-            <div class="text-xs text-slate-400">
-                อัปเดตล่าสุด: <span id="last-update" class="text-blue-300">--:--:--</span>
+    <nav class="sticky top-0 z-50 border-b border-white/5 bg-[var(--nav-bg)] backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto px-4 md:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                <div class="flex items-center gap-6">
+                    <h1 contenteditable="true" spellcheck="false" id="main-title" class="editable-title text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">ENV-MONITOR</h1>
+                    <div id="nav-tabs" class="flex gap-1 bg-black/10 p-1 rounded-xl">
+                        <button onclick="switchPage('realtime')" id="btn-realtime" class="nav-btn active px-4 py-2 rounded-lg text-sm font-medium">Real-time</button>
+                        <button onclick="switchPage('analytics')" id="btn-analytics" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">Analytics</button>
+                        <!-- ลิงก์ไปยังหน้าใหม่ -->
+                        <a href="reports.html" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <span>Reports</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-500">Mode</span>
+                        <div onclick="toggleTheme()" class="theme-switch"></div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-tighter">Last Sync</p>
+                        <p id="update-time" class="value-display text-sm">--:--:--</p>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto p-4 md:p-6">
-        <!-- หน้าที่ 1: Real-time -->
-        <div id="page-realtime" class="page active">
+    <main class="max-w-[1600px] mx-auto p-4 md:p-8">
+        <!-- Page 1: Real-time -->
+        <section id="page-realtime" class="page-content active">
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-                
-                <!-- Gauge: PM 2.5 -->
+                <!-- Gauge Cards -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">PM 2.5</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-pm25" class="gauge-fill" style="border-color: #f97316;"></div>
-                        <div id="v-pm25" class="gauge-value text-orange-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">µg/m³</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">PM 2.5</p>
+                    <div class="gauge-container"><canvas id="g-pm25"></canvas><div class="gauge-text"><span id="v-pm25" class="text-xl font-bold text-orange-400">0</span></div></div>
                 </div>
-
-                <!-- Gauge: PM 10 -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">PM 10</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-pm10" class="gauge-fill" style="border-color: #eab308;"></div>
-                        <div id="v-pm10" class="gauge-value text-yellow-500">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">µg/m³</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">PM 10</p>
+                    <div class="gauge-container"><canvas id="g-pm10"></canvas><div class="gauge-text"><span id="v-pm10" class="text-xl font-bold text-yellow-500">0</span></div></div>
                 </div>
-
-                <!-- Gauge: CO2 -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">CO2</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-co2" class="gauge-fill" style="border-color: #10b981;"></div>
-                        <div id="v-co2" class="gauge-value text-emerald-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">ppm</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">CO2</p>
+                    <div class="gauge-container"><canvas id="g-co2"></canvas><div class="gauge-text"><span id="v-co2" class="text-xl font-bold text-emerald-400">0</span></div></div>
                 </div>
-
-                <!-- Gauge: Temp -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">TEMP</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-temp" class="gauge-fill" style="border-color: #3b82f6;"></div>
-                        <div id="v-temp" class="gauge-value text-blue-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">°C</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">TEMP</p>
+                    <div class="gauge-container"><canvas id="g-temp"></canvas><div class="gauge-text"><span id="v-temp" class="text-xl font-bold text-blue-400">0</span></div></div>
                 </div>
-
-                <!-- Gauge: Humi -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">HUMI</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-humi" class="gauge-fill" style="border-color: #06b6d4;"></div>
-                        <div id="v-humi" class="gauge-value text-cyan-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">%</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">HUMI</p>
+                    <div class="gauge-container"><canvas id="g-humi"></canvas><div class="gauge-text"><span id="v-humi" class="text-xl font-bold text-cyan-400">0</span></div></div>
                 </div>
-
-                <!-- Gauge: Lux -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">LUX</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-lux" class="gauge-fill" style="border-color: #f59e0b;"></div>
-                        <div id="v-lux" class="gauge-value text-amber-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">lx</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">LUX</p>
+                    <div class="gauge-container"><canvas id="g-lux"></canvas><div class="gauge-text"><span id="v-lux" class="text-xl font-bold text-amber-400">0</span></div></div>
                 </div>
-
-                <!-- Gauge: Noise -->
                 <div class="glass-card p-4 text-center">
-                    <p class="text-[10px] uppercase text-slate-400 mb-2">NOISE</p>
-                    <div class="gauge-container">
-                        <div class="gauge-bg"></div>
-                        <div id="g-noise" class="gauge-fill" style="border-color: #ec4899;"></div>
-                        <div id="v-noise" class="gauge-value text-pink-400">0</div>
-                    </div>
-                    <p class="text-[8px] opacity-50 mt-1">dB</p>
+                    <p class="text-[10px] text-slate-500 uppercase mb-2">NOISE</p>
+                    <div class="gauge-container"><canvas id="g-noise"></canvas><div class="gauge-text"><span id="v-noise" class="text-xl font-bold text-pink-400">0</span></div></div>
                 </div>
             </div>
-
+            
             <div class="glass-card p-6 h-[400px]">
-                <h3 class="text-sm font-semibold mb-4 text-slate-300">กราฟติดตามผล PM 2.5 (30 ข้อมูลล่าสุด)</h3>
-                <canvas id="liveChart"></canvas>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-sm font-semibold opacity-70">PM 2.5 Activity Timeline</h3>
+                    <div class="flex gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span class="text-[10px] opacity-50 uppercase tracking-widest">Real-time Stream</span>
+                    </div>
+                </div>
+                <canvas id="rt-chart"></canvas>
             </div>
-        </div>
+        </section>
 
-        <!-- หน้าที่ 2: Analytics -->
-        <div id="page-analytics" class="page">
+        <!-- Page 2: Analytics -->
+        <section id="page-analytics" class="page-content">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="glass-card p-6 h-[320px]">
-                    <h3 class="text-sm font-semibold mb-4 text-orange-400">แนวโน้มฝุ่น PM 2.5 และ PM 10</h3>
-                    <canvas id="anPM"></canvas>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">CO2 Concentration (24h)</h3>
+                    <canvas id="chart-co2"></canvas>
                 </div>
-                <div class="glass-card p-6 h-[320px]">
-                    <h3 class="text-sm font-semibold mb-4 text-blue-400">อุณหภูมิและความชื้น</h3>
-                    <canvas id="anTH"></canvas>
+                <div class="glass-card p-6 h-[350px]">
+                    <h3 class="text-sm font-semibold mb-4 text-amber-400">Light Intensity - Lux (24h)</h3>
+                    <canvas id="chart-lux"></canvas>
                 </div>
-                <div class="glass-card p-6 h-[320px]">
-                    <h3 class="text-sm font-semibold mb-4 text-emerald-400">ปริมาณ CO2</h3>
-                    <canvas id="anCO2"></canvas>
-                </div>
-                <div class="glass-card p-6 h-[320px]">
-                    <h3 class="text-sm font-semibold mb-4 text-amber-400">ความเข้มแสง (Lux)</h3>
-                    <canvas id="anLux"></canvas>
-                </div>
-                <div class="glass-card p-6 h-[320px] lg:col-span-2">
-                    <h3 class="text-sm font-semibold mb-4 text-pink-400">ระดับเสียงย้อนหลัง (dB)</h3>
-                    <canvas id="anNoise"></canvas>
+                <div class="glass-card p-6 h-[350px] lg:col-span-2">
+                    <h3 class="text-sm font-semibold mb-4 text-pink-400">Noise Level - dB (24h)</h3>
+                    <canvas id="chart-noise"></canvas>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
-        const COL = { TIME: 2, PM25: 4, PM10: 5, TEMP: 6, HUMI: 7, LUX: 8, NOISE: 9, CO2: 10 };
-        const LIMITS = { PM25: 150, PM10: 200, CO2: 2000, TEMP: 50, HUMI: 100, LUX: 1000, NOISE: 120 };
+        const COL = { TIME: 0, ID: 3, PM25: 4, PM10: 5, TEMP: 6, HUMI: 7, LUX: 8, NOISE: 9, CO2: 10 };
+        const LIMITS = { PM25: 100, PM10: 150, CO2: 2000, TEMP: 50, HUMI: 100, LUX: 5000, NOISE: 120 };
         
         let charts = {};
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+
+        if(currentTheme === 'light') document.body.setAttribute('data-theme', 'light');
+
+        const titleEl = document.getElementById('main-title');
+        titleEl.innerText = localStorage.getItem('custom-title') || 'ENV-MONITOR';
+        titleEl.addEventListener('blur', () => localStorage.setItem('custom-title', titleEl.innerText));
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            updateAllCharts();
+        }
 
         function switchPage(p) {
-            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('page-' + p).classList.add('active');
             document.getElementById('btn-' + p).classList.add('active');
         }
 
-        function setGauge(id, value, max) {
-            const percent = Math.min((value / max) * 100, 100);
-            const rotation = (percent * 1.8) - 45; // คำนวณองศาจาก 0-180 เทียบกับ -45 ถึง 135
-            document.getElementById('g-' + id).style.transform = `rotate(${rotation}deg)`;
-            document.getElementById('v-' + id).innerText = Math.round(value);
+        function createGauge(id, color) {
+            return new Chart(document.getElementById(id).getContext('2d'), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [0, 100], backgroundColor: [color, 'rgba(128,128,128,0.1)'], borderWidth: 0, circumference: 240, rotation: 240, cutout: '85%' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            });
         }
 
-        function initChart(id, datasets) {
-            return new Chart(document.getElementById(id), {
+        function createLineChart(id, label, color) {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
+            return new Chart(document.getElementById(id).getContext('2d'), {
                 type: 'line',
-                data: { labels: [], datasets: datasets.map(d => ({ ...d, tension: 0.4, pointRadius: 0, borderWidth: 2 })) },
+                data: { labels: [], datasets: [{ label, data: [], borderColor: color, backgroundColor: color + '10', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } },
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } }
+                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
                     },
-                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 11 } } } }
+                    plugins: { legend: { display: false } }
                 }
             });
         }
 
         async function updateData() {
             try {
-                const response = await fetch(csvUrl);
-                const data = await response.text();
-                const rows = data.split('\n').map(r => r.split(',')).slice(1).filter(r => r.length > 5);
-                
-                if (rows.length === 0) return;
-
+                const res = await fetch(csvUrl);
+                const text = await res.text();
+                const rows = text.split('\n').map(r => r.split(',')).slice(1).filter(r => r.length > 5);
                 const latest = rows[rows.length - 1];
-                const history = rows.slice(-50);
+                const dayLogs = rows.slice(-144);
 
-                // อัปเดต Gauges
-                setGauge('pm25', latest[COL.PM25], LIMITS.PM25);
-                setGauge('pm10', latest[COL.PM10], LIMITS.PM10);
-                setGauge('co2', latest[COL.CO2], LIMITS.CO2);
-                setGauge('temp', latest[COL.TEMP], LIMITS.TEMP);
-                setGauge('humi', latest[COL.HUMI], LIMITS.HUMI);
-                setGauge('lux', latest[COL.LUX], LIMITS.LUX);
-                setGauge('noise', latest[COL.NOISE], LIMITS.NOISE);
+                const updateG = (chart, val, max, elId) => {
+                    const n = parseFloat(val) || 0;
+                    chart.data.datasets[0].data = [n, Math.max(0, max - n)];
+                    chart.update();
+                    document.getElementById(elId).innerText = Math.round(n);
+                };
 
-                document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+                updateG(charts.gPM25, latest[COL.PM25], LIMITS.PM25, 'v-pm25');
+                updateG(charts.gPM10, latest[COL.PM10], LIMITS.PM10, 'v-pm10');
+                updateG(charts.gCO2, latest[COL.CO2], LIMITS.CO2, 'v-co2');
+                updateG(charts.gTemp, latest[COL.TEMP], LIMITS.TEMP, 'v-temp');
+                updateG(charts.gHumi, latest[COL.HUMI], LIMITS.HUMI, 'v-humi');
+                updateG(charts.gLux, latest[COL.LUX], LIMITS.LUX, 'v-lux');
+                updateG(charts.gNoise, latest[COL.NOISE], LIMITS.NOISE, 'v-noise');
 
-                const labels = history.map(r => r[COL.TIME]);
+                document.getElementById('update-time').innerText = new Date().toLocaleTimeString();
 
-                // อัปเดตกราฟ Live
-                charts.live.data.labels = labels.slice(-20);
-                charts.live.data.datasets[0].data = history.slice(-20).map(r => r[COL.PM25]);
-                charts.live.update('none');
+                const times = dayLogs.map(l => l[COL.TIME].split(' ')[1]);
+                const updateLine = (chart, data) => {
+                    chart.data.labels = times;
+                    chart.data.datasets[0].data = data;
+                    chart.update('none');
+                };
 
-                // อัปเดตกราฟ Analytics
-                charts.anPM.data.labels = labels;
-                charts.anPM.data.datasets[0].data = history.map(r => r[COL.PM25]);
-                charts.anPM.data.datasets[1].data = history.map(r => r[COL.PM10]);
-                charts.anPM.update('none');
+                updateLine(charts.rtPM25, dayLogs.slice(-30).map(l => l[COL.PM25]));
+                updateLine(charts.anCO2, dayLogs.map(l => l[COL.CO2]));
+                updateLine(charts.anLux, dayLogs.map(l => l[COL.LUX]));
+                updateLine(charts.anNoise, dayLogs.map(l => l[COL.NOISE]));
 
-                charts.anTH.data.labels = labels;
-                charts.anTH.data.datasets[0].data = history.map(r => r[COL.TEMP]);
-                charts.anTH.data.datasets[1].data = history.map(r => r[COL.HUMI]);
-                charts.anTH.update('none');
+            } catch(e) { console.error(e); }
+        }
 
-                charts.anCO2.data.labels = labels;
-                charts.anCO2.data.datasets[0].data = history.map(r => r[COL.CO2]);
-                charts.anCO2.update('none');
-
-                charts.anLux.data.labels = labels;
-                charts.anLux.data.datasets[0].data = history.map(r => r[COL.LUX]);
-                charts.anLux.update('none');
-
-                charts.anNoise.data.labels = labels;
-                charts.anNoise.data.datasets[0].data = history.map(r => r[COL.NOISE]);
-                charts.anNoise.update('none');
-
-            } catch (error) {
-                console.error("Fetch Error:", error);
-            }
+        function updateAllCharts() {
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-color');
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted');
+            Object.values(charts).forEach(c => {
+                if(c.options.scales) {
+                    c.options.scales.y.grid.color = gridColor;
+                    c.options.scales.y.ticks.color = textColor;
+                    c.options.scales.x.ticks.color = textColor;
+                    c.update();
+                }
+            });
         }
 
         window.onload = () => {
-            charts.live = initChart('liveChart', [{ label: 'PM 2.5 (Real-time)', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }]);
-            
-            charts.anPM = initChart('anPM', [
-                { label: 'PM 2.5', borderColor: '#f97316' },
-                { label: 'PM 10', borderColor: '#eab308' }
-            ]);
+            charts.gPM25 = createGauge('g-pm25', '#f97316');
+            charts.gPM10 = createGauge('g-pm10', '#eab308');
+            charts.gCO2 = createGauge('g-co2', '#10b981');
+            charts.gTemp = createGauge('g-temp', '#3b82f6');
+            charts.gHumi = createGauge('g-humi', '#06b6d4');
+            charts.gLux = createGauge('g-lux', '#f59e0b');
+            charts.gNoise = createGauge('g-noise', '#ec4899');
 
-            charts.anTH = initChart('anTH', [
-                { label: 'Temp (°C)', borderColor: '#3b82f6' },
-                { label: 'Humi (%)', borderColor: '#06b6d4' }
-            ]);
-
-            charts.anCO2 = initChart('anCO2', [{ label: 'CO2 (ppm)', borderColor: '#10b981' }]);
-            charts.anLux = initChart('anLux', [{ label: 'Lux', borderColor: '#f59e0b' }]);
-            charts.anNoise = initChart('anNoise', [{ label: 'Noise (dB)', borderColor: '#ec4899' }]);
+            charts.rtPM25 = createLineChart('rt-chart', 'PM 2.5', '#3b82f6');
+            charts.anCO2 = createLineChart('chart-co2', 'CO2', '#10b981');
+            charts.anLux = createLineChart('chart-lux', 'Lux', '#f59e0b');
+            charts.anNoise = createLineChart('chart-noise', 'Noise', '#ec4899');
 
             updateData();
             setInterval(updateData, 10000);
