@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirSense Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --panel: #131b24;
+    --panel2: #192230;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --accent3: #ff6b35;
+    --text: #c9d8e8;
+    --text2: #6b8aab;
+    --text3: #3a5068;
+    --good: #00e676;
+    --moderate: #ffea00;
+    --unhealthy: #ff6d00;
+    --danger: #f44336;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-head: 'Rajdhani', sans-serif;
+    --font-body: 'Sarabun', sans-serif;
+    --glow: 0 0 20px rgba(0,212,255,0.15);
+    --glow-green: 0 0 20px rgba(0,255,157,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,12,16,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse-logo 3s ease-in-out infinite;
+  }
+  @keyframes pulse-logo {
+    0%,100% { filter: drop-shadow(0 0 6px var(--accent)); }
+    50% { filter: drop-shadow(0 0 14px var(--accent2)); }
+  }
+  .logo-text {
+    font-family: var(--font-head);
+    font-size: 22px; font-weight: 700; letter-spacing: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .header-right {
+    display: flex; align-items: center; gap: 20px;
+  }
+  .status-dot {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 8px var(--good);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .last-update {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex; gap: 4px;
+    background: rgba(8,12,16,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .nav-btn {
+    padding: 12px 24px;
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-head); font-size: 14px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    transition: all .25s;
+    position: relative;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .nav-btn.active::after {
+    content: '';
+    position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* ── PAGE WRAPPER ── */
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  /* ── SECTION TITLE ── */
+  .section-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--accent); letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .section-title {
+    font-family: var(--font-head); font-size: 26px; font-weight: 700;
+    color: var(--text); letter-spacing: 1px; margin-bottom: 20px;
+  }
+
+  /* ── DEVICE INFO BAR ── */
+  .info-bar {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 20px; margin-bottom: 24px;
+  }
+  .info-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .info-item .label { color: var(--text3); }
+  .info-item .value { color: var(--accent2); }
+
+  /* ── GAUGE GRID ── */
+  .gauge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .gauge-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; overflow: hidden;
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .gauge-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .gauge-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-color, var(--accent)), transparent);
+  }
+
+  .gauge-title {
+    font-family: var(--font-head); font-size: 13px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text2); margin-bottom: 16px;
+  }
+
+  /* SVG Gauge */
+  .gauge-svg { width: 140px; height: 90px; }
+  .gauge-track { fill: none; stroke: var(--bg); stroke-width: 10; }
+  .gauge-fill {
+    fill: none; stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1);
+  }
+  .gauge-needle { transition: transform 1.2s cubic-bezier(.4,0,.2,1); }
+
+  .gauge-value-wrap { margin-top: 8px; text-align: center; }
+  .gauge-value {
+    font-family: var(--font-mono); font-size: 32px;
+    color: var(--text); line-height: 1;
+    transition: color .5s;
+  }
+  .gauge-unit {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+    margin-top: 2px;
+  }
+  .gauge-status {
+    margin-top: 8px;
+    font-family: var(--font-head); font-size: 12px; font-weight: 600;
+    letter-spacing: 1px; padding: 3px 10px; border-radius: 20px;
+    transition: all .5s;
+  }
+
+  .gauge-minmax {
+    display: flex; justify-content: space-between; width: 100%; margin-top: 10px;
+    font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  }
+
+  /* ── CHARTS PAGE ── */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .chart-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--card-color, var(--accent)), transparent);
+  }
+  .chart-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .chart-name {
+    font-family: var(--font-head); font-size: 16px; font-weight: 700;
+    letter-spacing: 1px; color: var(--text);
+  }
+  .chart-stat-group { text-align: right; }
+  .chart-current {
+    font-family: var(--font-mono); font-size: 22px;
+    color: var(--card-color, var(--accent));
+  }
+  .chart-range {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  }
+
+  canvas { display: block; width: 100% !important; }
+
+  /* ── TABLE PAGE ── */
+  .table-controls {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .search-box {
+    background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px;
+    color: var(--text); font-family: var(--font-mono); font-size: 12px;
+    outline: none; width: 220px; transition: border-color .2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text3); }
+
+  .badge {
+    background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--text2);
+  }
+  .badge span { color: var(--accent2); }
+
+  .table-wrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr {
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    padding: 12px 14px; text-align: left;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 400;
+    color: var(--text3); letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; user-select: none; transition: color .2s;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    transition: background .15s;
+  }
+  tbody tr:hover { background: var(--panel2); }
+  tbody tr:last-child { border-bottom: none; }
+
+  td {
+    padding: 10px 14px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--text);
+    white-space: nowrap;
+  }
+  td.numeric { color: var(--accent2); }
+  td.timestamp { color: var(--text3); }
+
+  .pagination {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 16px; justify-content: flex-end;
+  }
+  .page-btn {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px;
+    color: var(--text2); font-family: var(--font-mono); font-size: 12px;
+    cursor: pointer; transition: all .2s;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* ── LOADING ── */
+  .loading {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 300px; gap: 16px;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: var(--font-mono); font-size: 12px; color: var(--text3); letter-spacing: 2px;
+  }
+
+  /* ── ERROR ── */
+  .error-box {
+    background: rgba(244,67,54,0.08); border: 1px solid rgba(244,67,54,0.3);
+    border-radius: 8px; padding: 16px 20px;
+    font-family: var(--font-mono); font-size: 12px; color: #ff6b6b;
+    display: none;
+  }
+
+  /* ── REFRESH BTN ── */
+  .refresh-btn {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 16px;
+    color: var(--text2); font-family: var(--font-head); font-size: 13px;
+    font-weight: 600; letter-spacing: 1px; cursor: pointer;
+    transition: all .2s; display: flex; align-items: center; gap: 8px;
+  }
+  .refresh-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .refresh-btn svg { width: 14px; height: 14px; }
+  .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  @media(max-width:600px) {
+    .gauge-grid { grid-template-columns: repeat(2,1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .nav-btn { padding: 10px 12px; font-size: 12px; letter-spacing: 0; }
+    .logo-text { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <span class="logo-text">AIRSENSE</span>
+  </div>
+  <div class="header-right">
+    <div class="status-dot">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">CONNECTING</span>
+    </div>
+    <div class="last-update" id="lastUpdate">—</div>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showPage('realtime',this)">⬡ REALTIME</button>
+  <button class="nav-btn" onclick="showPage('charts',this)">◈ CHARTS</button>
+  <button class="nav-btn" onclick="showPage('data',this)">▤ DATA</button>
+</nav>
+
+<!-- ══ PAGE 1: REALTIME ══ -->
+<div class="page active" id="page-realtime">
+  <div class="section-label">LIVE MONITORING</div>
+  <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    สภาพแวดล้อมแบบ Realtime
+    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      </svg>
+      REFRESH
+    </button>
+  </div>
+
+  <div class="info-bar" id="infoBar">
+    <div class="info-item"><span class="label">DEVICE</span><span class="value" id="infoDevice">—</span></div>
+    <div class="info-item"><span class="label">DATE</span><span class="value" id="infoDate">—</span></div>
+    <div class="info-item"><span class="label">TIME</span><span class="value" id="infoTime">—</span></div>
+    <div class="info-item"><span class="label">RECORDS</span><span class="value" id="infoRecords">—</span></div>
+  </div>
+
+  <div class="error-box" id="errorBox">ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบ URL หรือการเชื่อมต่อ</div>
+
+  <div id="gaugeContainer">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">LOADING DATA...</div></div>
+  </div>
+</div>
+
+<!-- ══ PAGE 2: CHARTS ══ -->
+<div class="page" id="page-charts">
+  <div class="section-label">HISTORICAL TRENDS</div>
+  <div class="section-title">กราฟแนวโน้มข้อมูล</div>
+  <div id="chartContainer">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">LOADING CHARTS...</div></div>
+  </div>
+</div>
+
+<!-- ══ PAGE 3: DATA TABLE ══ -->
+<div class="page" id="page-data">
+  <div class="section-label">RAW DATA</div>
+  <div class="section-title">ตาราง Data</div>
+  <div class="table-controls">
+    <input class="search-box" id="searchInput" placeholder="ค้นหา..." oninput="filterTable()">
+    <div class="badge">แสดง <span id="rowCount">0</span> / <span id="totalCount">0</span> รายการ</div>
+  </div>
+  <div id="tableContainer">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">LOADING TABLE...</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTxafzEZXrZywZVvVc_9f9Xq6xK-AyORBFnUZL7HmGz6akXzCyTIUposMG2ARokrypOfCTpZcsXydfF/pub?gid=920439731&single=true&output=csv';
+const PROXY   = 'https://api.allorigins.win/raw?url=';
+const REFRESH_INTERVAL = 60000; // 60s
+
+// ══════════════════════════════════════════
+// METRICS CONFIG
+// ══════════════════════════════════════════
+const METRICS = [
+  { key:'PM2.5', label:'PM2.5', unit:'µg/m³', min:0, max:150, color:'#00d4ff',
+    thresholds:[{v:12,label:'ดี',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:35.4,label:'ปานกลาง',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:55.4,label:'ไม่ดี',bg:'rgba(255,109,0,.15)',txt:'#ff6d00'},
+                {v:999,label:'อันตราย',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+  { key:'PM10',  label:'PM10',  unit:'µg/m³', min:0, max:300, color:'#7b61ff',
+    thresholds:[{v:54,label:'ดี',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:154,label:'ปานกลาง',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:254,label:'ไม่ดี',bg:'rgba(255,109,0,.15)',txt:'#ff6d00'},
+                {v:999,label:'อันตราย',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+  { key:'Temp',  label:'TEMP',  unit:'°C', min:0, max:50, color:'#ff6b35',
+    thresholds:[{v:20,label:'เย็น',bg:'rgba(0,212,255,.1)',txt:'#00d4ff'},
+                {v:28,label:'สบาย',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:35,label:'ร้อน',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:999,label:'ร้อนมาก',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+  { key:'Humi',  label:'HUMIDITY', unit:'%RH', min:0, max:100, color:'#00bcd4',
+    thresholds:[{v:30,label:'แห้ง',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:60,label:'ปกติ',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:80,label:'ชื้น',bg:'rgba(0,212,255,.1)',txt:'#00d4ff'},
+                {v:999,label:'ชื้นมาก',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+  { key:'Lux',   label:'LIGHT',    unit:'lux', min:0, max:2000, color:'#ffd600',
+    thresholds:[{v:50,label:'มืด',bg:'rgba(100,100,100,.15)',txt:'#888'},
+                {v:500,label:'ปกติ',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:1000,label:'สว่าง',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:999999,label:'แสงจ้า',bg:'rgba(255,109,0,.15)',txt:'#ff6d00'}] },
+  { key:'Noise', label:'NOISE',    unit:'dB', min:0, max:120, color:'#f06292',
+    thresholds:[{v:40,label:'เงียบ',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:65,label:'ปกติ',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:85,label:'เสียงดัง',bg:'rgba(255,109,0,.15)',txt:'#ff6d00'},
+                {v:999,label:'อันตราย',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+  { key:'CO2',   label:'CO₂',      unit:'ppm', min:300, max:2000, color:'#00ff9d',
+    thresholds:[{v:800,label:'ดีเยี่ยม',bg:'rgba(0,230,118,.15)',txt:'#00e676'},
+                {v:1000,label:'ดี',bg:'rgba(255,234,0,.15)',txt:'#ffea00'},
+                {v:1500,label:'แย่',bg:'rgba(255,109,0,.15)',txt:'#ff6d00'},
+                {v:9999,label:'อันตราย',bg:'rgba(244,67,54,.15)',txt:'#f44336'}] },
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let allData = [];
+let filteredData = [];
+let charts = {};
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let sortCol = 0, sortAsc = false;
+
+// ══════════════════════════════════════════
+// PAGE NAV
+// ══════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// FETCH DATA
+// ══════════════════════════════════════════
+async function fetchData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  document.getElementById('statusText').textContent = 'SYNCING';
+  document.getElementById('statusDot').style.background = '#ffd600';
+  document.getElementById('statusDot').style.boxShadow = '0 0 8px #ffd600';
+
+  try {
+    const res = await fetch(PROXY + encodeURIComponent(CSV_URL) + '&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const parsed = parseCSV(text);
+    if (parsed.length < 2) throw new Error('No data');
+
+    allData = parseRows(parsed);
+    document.getElementById('errorBox').style.display = 'none';
+
+    updateRealtimePage();
+    updateChartsPage();
+    updateDataPage();
+
+    document.getElementById('statusText').textContent = 'LIVE';
+    document.getElementById('statusDot').style.background = 'var(--good)';
+    document.getElementById('statusDot').style.boxShadow = '0 0 8px var(--good)';
+    document.getElementById('lastUpdate').textContent = 'UPDATED ' + new Date().toLocaleTimeString('th-TH');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('errorBox').textContent = 'ข้อผิดพลาด: ' + e.message;
+    document.getElementById('statusText').textContent = 'ERROR';
+    document.getElementById('statusDot').style.background = 'var(--danger)';
+    document.getElementById('statusDot').style.boxShadow = '0 0 8px var(--danger)';
+
+    if (allData.length === 0) {
+      document.getElementById('gaugeContainer').innerHTML = `<div class="error-box" style="display:block">ไม่สามารถโหลดข้อมูลได้: ${e.message}</div>`;
+    }
+  }
+  btn.classList.remove('spinning');
+}
+
+function parseCSV(text) {
+  return text.trim().split('\n').map(line => {
+    const res = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { res.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    res.push(cur.trim());
+    return res;
+  });
+}
+
+function parseRows(parsed) {
+  const headers = parsed[0].map(h => h.trim());
+  return parsed.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] ? row[i].trim() : ''; });
+    return obj;
+  }).filter(r => r.Timestamp);
+}
+
+// ══════════════════════════════════════════
+// PAGE 1 — REALTIME
+// ══════════════════════════════════════════
+function updateRealtimePage() {
+  if (!allData.length) return;
+  const latest = allData[allData.length - 1];
+
+  document.getElementById('infoDevice').textContent  = latest['Device ID'] || '—';
+  document.getElementById('infoDate').textContent    = latest['Date'] || '—';
+  document.getElementById('infoTime').textContent    = latest['Time'] || '—';
+  document.getElementById('infoRecords').textContent = allData.length;
+
+  const container = document.getElementById('gaugeContainer');
+  container.innerHTML = `<div class="gauge-grid" id="gaugeGrid"></div>`;
+  const grid = document.getElementById('gaugeGrid');
+
+  METRICS.forEach(m => {
+    const raw = parseFloat(latest[m.key]);
+    const val = isNaN(raw) ? 0 : raw;
+    const status = getStatus(m, val);
+    const pct = Math.min(Math.max((val - m.min) / (m.max - m.min), 0), 1);
+
+    const card = document.createElement('div');
+    card.className = 'gauge-card';
+    card.style.setProperty('--card-color', m.color);
+
+    const R = 65, cx = 70, cy = 80;
+    const startAngle = -210, sweep = 240;
+    const arcLen = 2 * Math.PI * R * (sweep / 360);
+    const filled = arcLen * pct;
+
+    function polarToXY(deg, r) {
+      const rad = (deg - 90) * Math.PI / 180;
+      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    }
+    function describeArc(startDeg, endDeg) {
+      const s = polarToXY(startDeg, R), e = polarToXY(endDeg, R);
+      const large = (endDeg - startDeg) > 180 ? 1 : 0;
+      return `M ${s[0]} ${s[1]} A ${R} ${R} 0 ${large} 1 ${e[0]} ${e[1]}`;
+    }
+
+    const endAngle = startAngle + sweep;
+    const fillEnd  = startAngle + sweep * pct;
+    const needleDeg = startAngle + sweep * pct;
+    const [nx, ny] = polarToXY(needleDeg, R - 14);
+
+    card.innerHTML = `
+      <div class="gauge-title">${m.label}</div>
+      <svg class="gauge-svg" viewBox="0 0 140 90">
+        <path class="gauge-track" d="${describeArc(startAngle, endAngle)}" stroke="#1e2d3d"/>
+        <path class="gauge-fill" d="${describeArc(startAngle, endAngle)}"
+          stroke="${m.color}"
+          stroke-dasharray="${filled} ${arcLen}"
+          stroke-dashoffset="0"
+          fill="none" stroke-width="10" stroke-linecap="round"
+          style="filter:drop-shadow(0 0 4px ${m.color}88)"/>
+        <circle cx="${nx}" cy="${ny}" r="4" fill="${m.color}" opacity="0.9"
+          style="filter:drop-shadow(0 0 6px ${m.color})"/>
+        <circle cx="${cx}" cy="${cy}" r="6" fill="#1e2d3d" stroke="${m.color}" stroke-width="1.5"/>
+      </svg>
+      <div class="gauge-value-wrap">
+        <div class="gauge-value" style="color:${m.color}">${isNaN(raw)?'—':raw.toFixed(1)}</div>
+        <div class="gauge-unit">${m.unit}</div>
+        <div class="gauge-status" style="background:${status.bg};color:${status.txt}">${status.label}</div>
+      </div>
+      <div class="gauge-minmax">
+        <span>${m.min}</span><span>${m.max}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function getStatus(m, val) {
+  for (const t of m.thresholds) {
+    if (val <= t.v) return t;
+  }
+  return m.thresholds[m.thresholds.length - 1];
+}
+
+// ══════════════════════════════════════════
+// PAGE 2 — CHARTS
+// ══════════════════════════════════════════
+function updateChartsPage() {
+  if (!allData.length) return;
+  const container = document.getElementById('chartContainer');
+
+  // Build or reuse
+  if (!container.querySelector('.chart-grid')) {
+    container.innerHTML = `<div class="chart-grid" id="chartGrid"></div>`;
+    const grid = document.getElementById('chartGrid');
+
+    METRICS.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      card.style.setProperty('--card-color', m.color);
+      card.innerHTML = `
+        <div class="chart-header">
+          <div>
+            <div class="chart-name" style="color:${m.color}">${m.label}</div>
+            <div class="gauge-unit">${m.unit}</div>
+          </div>
+          <div class="chart-stat-group">
+            <div class="chart-current" id="cv-${m.key}">—</div>
+            <div class="chart-range" id="cr-${m.key}">— / —</div>
+          </div>
+        </div>
+        <canvas id="chart-${m.key}" height="100"></canvas>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  const labels = allData.map(r => r['Time'] || r['Timestamp'] || '');
+  const MAX_POINTS = 50;
+  const slicedLabels = labels.slice(-MAX_POINTS);
+
+  METRICS.forEach(m => {
+    const vals = allData.map(r => parseFloat(r[m.key]) || 0).slice(-MAX_POINTS);
+    const latest = vals[vals.length - 1];
+    const mn = Math.min(...vals), mx = Math.max(...vals);
+
+    document.getElementById('cv-' + m.key).textContent = latest.toFixed(1);
+    document.getElementById('cr-' + m.key).textContent = `min ${mn.toFixed(1)} / max ${mx.toFixed(1)}`;
+
+    const ctx = document.getElementById('chart-' + m.key).getContext('2d');
+
+    if (charts[m.key]) { charts[m.key].destroy(); }
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 120);
+    grad.addColorStop(0, m.color + '33');
+    grad.addColorStop(1, m.color + '00');
+
+    charts[m.key] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: slicedLabels,
+        datasets: [{
+          data: vals,
+          borderColor: m.color,
+          backgroundColor: grad,
+          borderWidth: 2,
+          pointRadius: vals.length > 20 ? 0 : 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: m.color,
+          fill: true,
+          tension: 0.4,
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: { duration: 800 },
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: '#131b24', borderColor: m.color, borderWidth: 1,
+          titleColor: '#6b8aab', bodyColor: m.color,
+          titleFont: { family: 'Share Tech Mono', size: 10 },
+          bodyFont: { family: 'Share Tech Mono', size: 14 },
+          callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(2)} ${m.unit}` }
+        }},
+        scales: {
+          x: {
+            grid: { color: 'rgba(30,45,61,0.5)', drawBorder: false },
+            ticks: { color: '#3a5068', font: { family: 'Share Tech Mono', size: 9 },
+                     maxTicksLimit: 8, maxRotation: 0 }
+          },
+          y: {
+            grid: { color: 'rgba(30,45,61,0.5)', drawBorder: false },
+            ticks: { color: '#3a5068', font: { family: 'Share Tech Mono', size: 9 } },
+          }
+        }
+      }
+    });
+  });
+}
+
+// ══════════════════════════════════════════
+// PAGE 3 — TABLE
+// ══════════════════════════════════════════
+const COLS = ['Timestamp','Device ID','PM2.5','PM10','Temp','Humi','Lux','Noise','CO2'];
+const NUMERIC_COLS = ['PM2.5','PM10','Temp','Humi','Lux','Noise','CO2'];
+
+function updateDataPage() {
+  filteredData = [...allData].reverse();
+  document.getElementById('totalCount').textContent = filteredData.length;
+  renderTable();
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  filteredData = allData.filter(r =>
+    Object.values(r).some(v => v.toLowerCase().includes(q))
+  ).reverse();
+  currentPage = 1;
+  document.getElementById('totalCount').textContent = filteredData.length;
+  renderTable();
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredData.slice(start, start + PAGE_SIZE);
+  document.getElementById('rowCount').textContent = filteredData.length;
+
+  const container = document.getElementById('tableContainer');
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${COLS.map((c, i) => `
+          <th class="${sortCol===i?'sorted':''}" onclick="sortTable(${i})">${c} ${sortCol===i?(sortAsc?'↑':'↓'):''}</th>
+        `).join('')}</tr></thead>
+        <tbody>${pageData.map(r => `
+          <tr>${COLS.map(c => `
+            <td class="${NUMERIC_COLS.includes(c)?'numeric':c==='Timestamp'||c==='Device ID'?'timestamp':''}">${r[c]||'—'}</td>
+          `).join('')}</tr>
+        `).join('')}</tbody>
+      </table>
+    </div>
+  `;
+  renderPagination();
+}
+
+function sortTable(colIdx) {
+  if (sortCol === colIdx) sortAsc = !sortAsc;
+  else { sortCol = colIdx; sortAsc = true; }
+  const col = COLS[colIdx];
+  filteredData.sort((a, b) => {
+    const av = NUMERIC_COLS.includes(col) ? parseFloat(a[col]) : a[col];
+    const bv = NUMERIC_COLS.includes(col) ? parseFloat(b[col]) : b[col];
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+  renderTable();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredData.length / PAGE_SIZE);
+  const pag = document.getElementById('pagination');
+  if (total <= 1) { pag.innerHTML = ''; return; }
+
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ PREV</button>`;
+  const range = [];
+  for (let i = Math.max(1, currentPage-2); i <= Math.min(total, currentPage+2); i++) range.push(i);
+  if (range[0] > 1) html += `<button class="page-btn" onclick="goPage(1)">1</button>${range[0]>2?'<span style="color:var(--text3);font-family:var(--font-mono);padding:0 4px">…</span>':''}`;
+  range.forEach(i => html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`);
+  if (range[range.length-1] < total) html += `${range[range.length-1]<total-1?'<span style="color:var(--text3);font-family:var(--font-mono);padding:0 4px">…</span>':''}<button class="page-btn" onclick="goPage(${total})">${total}</button>`;
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>NEXT ›</button>`;
+  pag.innerHTML = html;
+}
+
+function goPage(p) {
+  const total = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  renderTable();
+  document.getElementById('page-data').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+fetchData();
+setInterval(fetchData, REFRESH_INTERVAL);
+</script>
+</body>
+</html>
