@@ -21,30 +21,24 @@ body {
 }
 .nav button {
   flex: 1;
-  padding: 15px;
+  padding: 14px;
   border: none;
   background: none;
   color: white;
   cursor: pointer;
-  font-size: 16px;
-}
-.nav button:hover {
-  background: #1f2a52;
 }
 
 /* PAGE */
 .page {
   display: none;
-  padding: 20px;
+  padding: 15px;
 }
-.active {
-  display: block;
-}
+.active { display: block; }
 
-/* GRID */
+/* RESPONSIVE GRID */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 15px;
 }
 
@@ -52,12 +46,13 @@ body {
 .card {
   background: linear-gradient(145deg,#151d3b,#0f1530);
   border-radius: 20px;
-  height: 260px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+  height: 220px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
 /* GRAPH */
 .chart {
+  width: 100%;
   height: 400px;
   background: #151d3b;
   border-radius: 16px;
@@ -69,8 +64,14 @@ body {
   border-collapse: collapse;
 }
 .table th, .table td {
-  padding: 8px;
+  padding: 6px;
   border-bottom: 1px solid #333;
+  font-size: 12px;
+}
+
+/* MOBILE */
+@media(max-width:600px){
+  .card { height:180px; }
 }
 </style>
 </head>
@@ -83,9 +84,8 @@ body {
   <button onclick="showPage('table')">Data</button>
 </div>
 
-<!-- PAGE 1 REALTIME -->
+<!-- REALTIME -->
 <div id="realtime" class="page active">
-  <h2>Realtime Monitoring</h2>
   <div class="grid">
     <div id="g_pm25" class="card"></div>
     <div id="g_temp" class="card"></div>
@@ -96,15 +96,13 @@ body {
   </div>
 </div>
 
-<!-- PAGE 2 GRAPH -->
+<!-- GRAPH -->
 <div id="graph" class="page">
-  <h2>Sensor Graph</h2>
   <div id="chart" class="chart"></div>
 </div>
 
-<!-- PAGE 3 TABLE -->
+<!-- TABLE -->
 <div id="table" class="page">
-  <h2>Data Table</h2>
   <table class="table" id="dataTable"></table>
 </div>
 
@@ -133,18 +131,28 @@ function csvToJSON(csv){
   return result;
 }
 
+/* ===== BLYNK STYLE GAUGE ===== */
 function createGauge(id, name, val, max){
-  let g = echarts.init(document.getElementById(id));
 
-  g.setOption({
+  let chart = echarts.init(document.getElementById(id));
+
+  chart.setOption({
     series: [{
       type: 'gauge',
+      startAngle: 180,
+      endAngle: 0,
+
       min: 0,
       max: max,
-      progress: { show: true, width: 10 },
+
+      progress: {
+        show: true,
+        width: 12
+      },
+
       axisLine: {
         lineStyle: {
-          width: 10,
+          width: 12,
           color: [
             [0.5, '#00ffcc'],
             [0.75, '#ffcc00'],
@@ -152,18 +160,35 @@ function createGauge(id, name, val, max){
           ]
         }
       },
-      pointer: { length: '70%', width: 4 },
+
+      pointer: { show: false },
+
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { show: false },
+
       detail: {
         valueAnimation: true,
-        fontSize: 20,
+        fontSize: 22,
+        offsetCenter: [0, "10%"],
         color: '#fff'
       },
-      title: { color: '#aaa' },
-      data: [{ value: val, name: name }]
+
+      title: {
+        offsetCenter: [0, "70%"],
+        fontSize: 12,
+        color: '#aaa'
+      },
+
+      data: [{
+        value: val,
+        name: name
+      }]
     }]
   });
 }
 
+/* LOAD DATA */
 function loadData(){
   fetch(URL)
   .then(res => res.text())
@@ -172,7 +197,6 @@ function loadData(){
     let data = csvToJSON(csv).filter(d => d["PM2.5"]);
     let latest = data[data.length-1];
 
-    // ===== GAUGE =====
     createGauge("g_pm25","PM2.5", +latest["PM2.5"], 200);
     createGauge("g_temp","Temp °C", +latest["Temp"], 50);
     createGauge("g_humi","Humidity %", +latest["Humi"], 100);
@@ -180,24 +204,19 @@ function loadData(){
     createGauge("g_noise","Noise dB", +latest["Noise"], 120);
     createGauge("g_lux","Lux", +latest["Lux"], 2000);
 
-    // ===== GRAPH =====
+    /* GRAPH */
     let times = data.slice(-30).map(d => d.Time);
     let pm25 = data.slice(-30).map(d => +d["PM2.5"]);
-    let co2 = data.slice(-30).map(d => +d["CO2"]);
 
     let chart = echarts.init(document.getElementById('chart'));
 
     chart.setOption({
-      legend: { textStyle:{color:'#fff'} },
       xAxis: { type:'category', data:times },
       yAxis: { type:'value' },
-      series: [
-        { name:"PM2.5", data:pm25, type:'line', smooth:true },
-        { name:"CO2", data:co2, type:'line', smooth:true }
-      ]
+      series: [{ data:pm25, type:'line', smooth:true }]
     });
 
-    // ===== TABLE =====
+    /* TABLE */
     let table = document.getElementById("dataTable");
     let headers = Object.keys(data[0]);
 
@@ -210,11 +229,17 @@ function loadData(){
   });
 }
 
-// โหลดครั้งแรก
+/* RUN */
 loadData();
-
-// รีเฟรชทุก 5 วิ (ไม่ reload หน้า)
 setInterval(loadData, 5000);
+
+/* RESPONSIVE FIX */
+window.addEventListener('resize', ()=>{
+  document.querySelectorAll('.card').forEach(c=>{
+    let chart = echarts.getInstanceByDom(c);
+    if(chart) chart.resize();
+  });
+});
 
 </script>
 
