@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sensor Dashboard</title>
+<title>Pro Sensor Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
 
@@ -10,14 +10,14 @@
 body {
   margin: 0;
   font-family: Arial;
-  background: #0d1228;
+  background: #0b1026;
   color: white;
 }
 
 /* NAV */
 .nav {
   display: flex;
-  background: #151d3b;
+  background: #11193f;
 }
 .nav button {
   flex: 1;
@@ -29,49 +29,47 @@ body {
 }
 
 /* PAGE */
-.page {
-  display: none;
-  padding: 15px;
-}
-.active { display: block; }
+.page { display:none; padding:15px; }
+.active { display:block; }
 
-/* RESPONSIVE GRID */
+/* GRID */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
   gap: 15px;
 }
 
 /* CARD */
 .card {
-  background: linear-gradient(145deg,#151d3b,#0f1530);
+  background: linear-gradient(145deg,#141c44,#0c1230);
   border-radius: 20px;
   height: 220px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  transition: 0.3s;
 }
+
+/* NEON GLOW */
+.card.glow-green { box-shadow: 0 0 20px #00ffcc; }
+.card.glow-yellow { box-shadow: 0 0 20px #ffcc00; }
+.card.glow-red { box-shadow: 0 0 20px #ff3b3b; }
 
 /* GRAPH */
 .chart {
-  width: 100%;
-  height: 400px;
-  background: #151d3b;
-  border-radius: 16px;
+  width:100%;
+  height:400px;
+  background:#141c44;
+  border-radius:16px;
 }
 
 /* TABLE */
 .table {
-  width: 100%;
-  border-collapse: collapse;
+  width:100%;
+  border-collapse:collapse;
 }
-.table th, .table td {
-  padding: 6px;
-  border-bottom: 1px solid #333;
-  font-size: 12px;
-}
-
-/* MOBILE */
-@media(max-width:600px){
-  .card { height:180px; }
+.table th,.table td{
+  padding:6px;
+  border-bottom:1px solid #333;
+  font-size:12px;
 }
 </style>
 </head>
@@ -131,10 +129,20 @@ function csvToJSON(csv){
   return result;
 }
 
-/* ===== BLYNK STYLE GAUGE ===== */
+/* COLOR LOGIC */
+function getColor(v, max){
+  let p = v/max;
+  if(p < 0.5) return "green";
+  if(p < 0.75) return "yellow";
+  return "red";
+}
+
+/* GAUGE */
 function createGauge(id, name, val, max){
 
   let chart = echarts.init(document.getElementById(id));
+
+  let percent = val/max;
 
   chart.setOption({
     series: [{
@@ -147,12 +155,12 @@ function createGauge(id, name, val, max){
 
       progress: {
         show: true,
-        width: 12
+        width: 14
       },
 
       axisLine: {
         lineStyle: {
-          width: 12,
+          width: 14,
           color: [
             [0.5, '#00ffcc'],
             [0.75, '#ffcc00'],
@@ -161,79 +169,84 @@ function createGauge(id, name, val, max){
         }
       },
 
-      pointer: { show: false },
-
-      axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { show: false },
+      pointer: { show:false },
 
       detail: {
-        valueAnimation: true,
-        fontSize: 22,
-        offsetCenter: [0, "10%"],
-        color: '#fff'
+        valueAnimation:true,
+        fontSize:22,
+        color: percent<0.5 ? "#00ffcc" : percent<0.75 ? "#ffcc00" : "#ff3b3b"
       },
 
       title: {
-        offsetCenter: [0, "70%"],
-        fontSize: 12,
-        color: '#aaa'
+        offsetCenter:[0,"70%"],
+        color:"#aaa"
       },
 
-      data: [{
-        value: val,
-        name: name
-      }]
+      data:[{ value: val, name:name }]
     }]
   });
+
+  /* GLOW */
+  let card = document.getElementById(id);
+  card.classList.remove("glow-green","glow-yellow","glow-red");
+
+  let c = getColor(val,max);
+  card.classList.add("glow-"+c);
 }
 
 /* LOAD DATA */
 function loadData(){
   fetch(URL)
-  .then(res => res.text())
-  .then(csv => {
+  .then(res=>res.text())
+  .then(csv=>{
 
-    let data = csvToJSON(csv).filter(d => d["PM2.5"]);
+    let data = csvToJSON(csv).filter(d=>d["PM2.5"]);
     let latest = data[data.length-1];
 
-    createGauge("g_pm25","PM2.5", +latest["PM2.5"], 200);
-    createGauge("g_temp","Temp °C", +latest["Temp"], 50);
-    createGauge("g_humi","Humidity %", +latest["Humi"], 100);
-    createGauge("g_co2","CO2 ppm", +latest["CO2"], 2000);
-    createGauge("g_noise","Noise dB", +latest["Noise"], 120);
-    createGauge("g_lux","Lux", +latest["Lux"], 2000);
+    createGauge("g_pm25","PM2.5",+latest["PM2.5"],200);
+    createGauge("g_temp","Temp °C",+latest["Temp"],50);
+    createGauge("g_humi","Humidity %",+latest["Humi"],100);
+    createGauge("g_co2","CO2 ppm",+latest["CO2"],2000);
+    createGauge("g_noise","Noise dB",+latest["Noise"],120);
+    createGauge("g_lux","Lux",+latest["Lux"],2000);
 
     /* GRAPH */
-    let times = data.slice(-30).map(d => d.Time);
-    let pm25 = data.slice(-30).map(d => +d["PM2.5"]);
+    let times = data.slice(-50).map(d=>d.Time);
+    let pm25 = data.slice(-50).map(d=>+d["PM2.5"]);
 
     let chart = echarts.init(document.getElementById('chart'));
 
     chart.setOption({
-      xAxis: { type:'category', data:times },
-      yAxis: { type:'value' },
-      series: [{ data:pm25, type:'line', smooth:true }]
-    });
-
-    /* TABLE */
-    let table = document.getElementById("dataTable");
-    let headers = Object.keys(data[0]);
-
-    table.innerHTML = "<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-
-    data.slice(-50).reverse().forEach(r=>{
-      table.innerHTML += "<tr>"+headers.map(h=>`<td>${r[h]}</td>`).join("")+"</tr>";
+      tooltip:{ trigger:'axis' },
+      xAxis:{ type:'category', data:times },
+      yAxis:{ type:'value' },
+      dataZoom:[
+        { type:'inside' },
+        { type:'slider' }
+      ],
+      series:[{
+        data:pm25,
+        type:'line',
+        smooth:true,
+        areaStyle:{ opacity:0.2 }
+      }]
     });
 
   });
 }
 
+/* CLICK GAUGE → GRAPH */
+document.querySelectorAll(".card").forEach(c=>{
+  c.addEventListener("click",()=>{
+    showPage("graph");
+  });
+});
+
 /* RUN */
 loadData();
-setInterval(loadData, 5000);
+setInterval(loadData,5000);
 
-/* RESPONSIVE FIX */
+/* RESIZE */
 window.addEventListener('resize', ()=>{
   document.querySelectorAll('.card').forEach(c=>{
     let chart = echarts.getInstanceByDom(c);
