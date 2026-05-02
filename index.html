@@ -14,50 +14,60 @@ body {
   color: white;
 }
 
+/* NAV */
 .nav {
   display: flex;
   background: #151d3b;
 }
-
 .nav button {
   flex: 1;
   padding: 15px;
-  background: none;
   border: none;
+  background: none;
   color: white;
   cursor: pointer;
+  font-size: 16px;
 }
-
 .nav button:hover {
   background: #1f2a52;
 }
 
+/* PAGE */
 .page {
   display: none;
   padding: 20px;
 }
-
 .active {
   display: block;
 }
 
+/* GRID */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
 }
 
+/* CARD */
 .card {
-  background: #151d3b;
-  border-radius: 16px;
-  height: 250px;
+  background: linear-gradient(145deg,#151d3b,#0f1530);
+  border-radius: 20px;
+  height: 260px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
 }
 
+/* GRAPH */
+.chart {
+  height: 400px;
+  background: #151d3b;
+  border-radius: 16px;
+}
+
+/* TABLE */
 .table {
   width: 100%;
   border-collapse: collapse;
 }
-
 .table th, .table td {
   padding: 8px;
   border-bottom: 1px solid #333;
@@ -73,26 +83,26 @@ body {
   <button onclick="showPage('table')">Data</button>
 </div>
 
-<!-- PAGE 1 -->
+<!-- PAGE 1 REALTIME -->
 <div id="realtime" class="page active">
-  <h2>Realtime Sensor</h2>
+  <h2>Realtime Monitoring</h2>
   <div class="grid">
-    <div id="g1" class="card"></div>
-    <div id="g2" class="card"></div>
-    <div id="g3" class="card"></div>
-    <div id="g4" class="card"></div>
-    <div id="g5" class="card"></div>
-    <div id="g6" class="card"></div>
+    <div id="g_pm25" class="card"></div>
+    <div id="g_temp" class="card"></div>
+    <div id="g_humi" class="card"></div>
+    <div id="g_co2" class="card"></div>
+    <div id="g_noise" class="card"></div>
+    <div id="g_lux" class="card"></div>
   </div>
 </div>
 
-<!-- PAGE 2 -->
+<!-- PAGE 2 GRAPH -->
 <div id="graph" class="page">
-  <h2>Graph</h2>
-  <div id="chart" style="height:400px;background:#151d3b;border-radius:16px;"></div>
+  <h2>Sensor Graph</h2>
+  <div id="chart" class="chart"></div>
 </div>
 
-<!-- PAGE 3 -->
+<!-- PAGE 3 TABLE -->
 <div id="table" class="page">
   <h2>Data Table</h2>
   <table class="table" id="dataTable"></table>
@@ -113,73 +123,98 @@ function csvToJSON(csv){
   let result = [];
 
   for(let i=1;i<lines.length;i++){
-    let obj = {};
     let row = lines[i].split(",");
+    if(row.length < headers.length) continue;
+
+    let obj = {};
     headers.forEach((h,j)=> obj[h.trim()] = row[j]);
     result.push(obj);
   }
   return result;
 }
 
-fetch(URL)
-.then(res => res.text())
-.then(csv => {
+function createGauge(id, name, val, max){
+  let g = echarts.init(document.getElementById(id));
 
-  let data = csvToJSON(csv).filter(d => d["PM2.5"]);
-  let latest = data[data.length-1];
+  g.setOption({
+    series: [{
+      type: 'gauge',
+      min: 0,
+      max: max,
+      progress: { show: true, width: 10 },
+      axisLine: {
+        lineStyle: {
+          width: 10,
+          color: [
+            [0.5, '#00ffcc'],
+            [0.75, '#ffcc00'],
+            [1, '#ff3b3b']
+          ]
+        }
+      },
+      pointer: { length: '70%', width: 4 },
+      detail: {
+        valueAnimation: true,
+        fontSize: 20,
+        color: '#fff'
+      },
+      title: { color: '#aaa' },
+      data: [{ value: val, name: name }]
+    }]
+  });
+}
 
-  // ===== GAUGE =====
-  function createGauge(id, name, val, max){
-    let g = echarts.init(document.getElementById(id));
-    g.setOption({
-      series: [{
-        type: 'gauge',
-        min: 0,
-        max: max,
-        detail: { formatter: '{value}' },
-        data: [{ value: val, name: name }]
-      }]
+function loadData(){
+  fetch(URL)
+  .then(res => res.text())
+  .then(csv => {
+
+    let data = csvToJSON(csv).filter(d => d["PM2.5"]);
+    let latest = data[data.length-1];
+
+    // ===== GAUGE =====
+    createGauge("g_pm25","PM2.5", +latest["PM2.5"], 200);
+    createGauge("g_temp","Temp °C", +latest["Temp"], 50);
+    createGauge("g_humi","Humidity %", +latest["Humi"], 100);
+    createGauge("g_co2","CO2 ppm", +latest["CO2"], 2000);
+    createGauge("g_noise","Noise dB", +latest["Noise"], 120);
+    createGauge("g_lux","Lux", +latest["Lux"], 2000);
+
+    // ===== GRAPH =====
+    let times = data.slice(-30).map(d => d.Time);
+    let pm25 = data.slice(-30).map(d => +d["PM2.5"]);
+    let co2 = data.slice(-30).map(d => +d["CO2"]);
+
+    let chart = echarts.init(document.getElementById('chart'));
+
+    chart.setOption({
+      legend: { textStyle:{color:'#fff'} },
+      xAxis: { type:'category', data:times },
+      yAxis: { type:'value' },
+      series: [
+        { name:"PM2.5", data:pm25, type:'line', smooth:true },
+        { name:"CO2", data:co2, type:'line', smooth:true }
+      ]
     });
-  }
 
-  createGauge("g1","PM2.5", latest["PM2.5"], 200);
-  createGauge("g2","Temp", latest["Temp"], 50);
-  createGauge("g3","Humi", latest["Humi"], 100);
-  createGauge("g4","CO2", latest["CO2"], 2000);
-  createGauge("g5","Noise", latest["Noise"], 120);
-  createGauge("g6","Lux", latest["Lux"], 2000);
+    // ===== TABLE =====
+    let table = document.getElementById("dataTable");
+    let headers = Object.keys(data[0]);
 
-  // ===== GRAPH =====
-  let times = data.slice(-30).map(d => d.Time);
-  let pm25 = data.slice(-30).map(d => parseFloat(d["PM2.5"]));
-  let temp = data.slice(-30).map(d => parseFloat(d["Temp"]));
+    table.innerHTML = "<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
 
-  let chart = echarts.init(document.getElementById('chart'));
+    data.slice(-50).reverse().forEach(r=>{
+      table.innerHTML += "<tr>"+headers.map(h=>`<td>${r[h]}</td>`).join("")+"</tr>";
+    });
 
-  chart.setOption({
-    legend: { textStyle:{color:'#fff'} },
-    xAxis: { type:'category', data:times },
-    yAxis: { type:'value' },
-    series: [
-      { name:"PM2.5", data:pm25, type:'line', smooth:true },
-      { name:"Temp", data:temp, type:'line', smooth:true }
-    ]
   });
+}
 
-  // ===== TABLE =====
-  let table = document.getElementById("dataTable");
+// โหลดครั้งแรก
+loadData();
 
-  let headers = Object.keys(data[0]);
-  table.innerHTML = "<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-
-  data.slice(-50).reverse().forEach(r=>{
-    table.innerHTML += "<tr>"+headers.map(h=>`<td>${r[h]}</td>`).join("")+"</tr>";
-  });
-
-});
-
-// refresh ทุก 5 วิ
-setInterval(()=>location.reload(),5000);
+// รีเฟรชทุก 5 วิ (ไม่ reload หน้า)
+setInterval(loadData, 5000);
 
 </script>
 
