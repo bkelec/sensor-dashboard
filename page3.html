@@ -721,95 +721,250 @@ function getStatus(m, val) {
 }
 
 // ══════════════════════════════════════════
-// PAGE 2 — CHARTS
+// PAGE 2 — CHARTS  (grouped, 24 h window)
 // ══════════════════════════════════════════
+
+// Chart groups: each group shares one chart card
+const CHART_GROUPS = [
+  {
+    id: 'pm',
+    title: 'PM2.5 & PM10',
+    unit: 'µg/m³',
+    color: '#00d4ff',
+    datasets: [
+      { key: 'PM2.5', label: 'PM2.5', color: '#00d4ff' },
+      { key: 'PM10',  label: 'PM10',  color: '#7b61ff' },
+    ]
+  },
+  {
+    id: 'th',
+    title: 'Temperature & Humidity',
+    unit: '°C / %RH',
+    color: '#ff6b35',
+    datasets: [
+      { key: 'Temp', label: 'Temp (°C)',  color: '#ff6b35', yAxis: 'yTemp' },
+      { key: 'Humi', label: 'Humi (%RH)', color: '#00bcd4', yAxis: 'yHumi' },
+    ],
+    dualAxis: true,  // Temp on left, Humi on right
+  },
+  {
+    id: 'lux',
+    title: 'Light',
+    unit: 'lux',
+    color: '#ffd600',
+    datasets: [
+      { key: 'Lux', label: 'Lux', color: '#ffd600' },
+    ]
+  },
+  {
+    id: 'noise',
+    title: 'Noise',
+    unit: 'dB',
+    color: '#f06292',
+    datasets: [
+      { key: 'Noise', label: 'Noise (dB)', color: '#f06292' },
+    ]
+  },
+  {
+    id: 'co2',
+    title: 'CO₂',
+    unit: 'ppm',
+    color: '#00ff9d',
+    datasets: [
+      { key: 'CO2', label: 'CO₂ (ppm)', color: '#00ff9d' },
+    ]
+  },
+];
+
+// Parse a timestamp string "DD-MM-YYYY HH:MM:SS" → Date (or fall back to Date.now)
+function parseTimestamp(row) {
+  const ts = row['Timestamp'] || '';
+  // Format: "28-04-2026 12:32:02"
+  const m = ts.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+  if (m) {
+    return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}`);
+  }
+  // Try Date/Time columns separately
+  const d = row['Date'] || '', t = row['Time'] || '';
+  const m2 = d.match(/(\d{2})-(\d{2})-(\d{4})/);
+  if (m2) return new Date(`${m2[3]}-${m2[2]}-${m2[1]}T${t || '00:00:00'}`);
+  return new Date(NaN);
+}
+
+// Filter rows to last 24 h from the most recent record
+function get24hData() {
+  if (!allData.length) return [];
+  // Find latest valid timestamp
+  let latestTime = null;
+  for (let i = allData.length - 1; i >= 0; i--) {
+    const d = parseTimestamp(allData[i]);
+    if (!isNaN(d)) { latestTime = d; break; }
+  }
+  if (!latestTime) return allData; // fallback: return all
+  const cutoff = new Date(latestTime.getTime() - 24 * 60 * 60 * 1000);
+  return allData.filter(r => {
+    const d = parseTimestamp(r);
+    return !isNaN(d) && d >= cutoff;
+  });
+}
+
 function updateChartsPage() {
   if (!allData.length) return;
   const container = document.getElementById('chartContainer');
 
-  // Build or reuse
+  // Build scaffold once
   if (!container.querySelector('.chart-grid')) {
     container.innerHTML = `<div class="chart-grid" id="chartGrid"></div>`;
     const grid = document.getElementById('chartGrid');
 
-    METRICS.forEach(m => {
+    CHART_GROUPS.forEach(g => {
+      const legendHTML = g.datasets.map(ds =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px">
+           <span style="width:20px;height:2px;background:${ds.color};display:inline-block;border-radius:2px"></span>
+           <span style="font-family:var(--font-mono);font-size:10px;color:var(--text2)">${ds.label}</span>
+         </span>`
+      ).join('');
+
+      const statsHTML = g.datasets.map(ds =>
+        `<div style="text-align:right;margin-left:16px">
+           <div class="chart-current" id="cv-${ds.key}" style="color:${ds.color};font-size:18px">—</div>
+           <div class="chart-range" id="cr-${ds.key}">— / —</div>
+           <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px">${ds.label}</div>
+         </div>`
+      ).join('');
+
       const card = document.createElement('div');
       card.className = 'chart-card';
-      card.style.setProperty('--card-color', m.color);
+      card.style.setProperty('--card-color', g.color);
       card.innerHTML = `
         <div class="chart-header">
           <div>
-            <div class="chart-name" style="color:${m.color}">${m.label}</div>
-            <div class="gauge-unit">${m.unit}</div>
+            <div class="chart-name" style="color:${g.color}">${g.title}</div>
+            <div style="margin-top:6px">${legendHTML}</div>
           </div>
-          <div class="chart-stat-group">
-            <div class="chart-current" id="cv-${m.key}">—</div>
-            <div class="chart-range" id="cr-${m.key}">— / —</div>
-          </div>
+          <div style="display:flex;align-items:flex-start">${statsHTML}</div>
         </div>
-        <canvas id="chart-${m.key}" height="100"></canvas>
+        <canvas id="chart-${g.id}" height="110"></canvas>
       `;
       grid.appendChild(card);
     });
+
+    // 24h window info bar
+    const infoEl = document.createElement('div');
+    infoEl.id = 'chart24hInfo';
+    infoEl.style.cssText = 'font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:14px;padding:8px 14px;background:var(--panel);border:1px solid var(--border);border-radius:6px;display:inline-block';
+    container.insertBefore(infoEl, container.firstChild);
   }
 
-  const labels = allData.map(r => r['Time'] || r['Timestamp'] || '');
-  const MAX_POINTS = 50;
-  const slicedLabels = labels.slice(-MAX_POINTS);
+  const data24h = get24hData();
+  const labels  = data24h.map(r => r['Time'] || '');
+  const nPts    = data24h.length;
 
-  METRICS.forEach(m => {
-    const vals = allData.map(r => parseFloat(r[m.key]) || 0).slice(-MAX_POINTS);
-    const latest = vals[vals.length - 1];
-    const mn = Math.min(...vals), mx = Math.max(...vals);
+  // Update 24h info
+  const infoEl = document.getElementById('chart24hInfo');
+  if (infoEl) {
+    const oldest = data24h[0], newest = data24h[data24h.length - 1];
+    const oTime = oldest ? (oldest['Time'] || oldest['Timestamp'] || '') : '—';
+    const nTime = newest ? (newest['Time'] || newest['Timestamp'] || '') : '—';
+    infoEl.textContent = `⏱ 24H WINDOW  •  ${nPts} RECORDS  •  ${oTime} → ${nTime}`;
+  }
 
-    document.getElementById('cv-' + m.key).textContent = latest.toFixed(1);
-    document.getElementById('cr-' + m.key).textContent = `min ${mn.toFixed(1)} / max ${mx.toFixed(1)}`;
+  // Common chart options factory
+  const xScale = {
+    grid: { color: 'rgba(30,45,61,0.6)', drawBorder: false },
+    ticks: {
+      color: '#3a5068', font: { family: 'Share Tech Mono', size: 9 },
+      maxTicksLimit: 10, maxRotation: 0,
+      callback: (val, idx, ticks) => {
+        // Show every Nth label to avoid crowding
+        const step = Math.ceil(ticks.length / 10);
+        return idx % step === 0 ? labels[idx] : '';
+      }
+    }
+  };
+  const yScaleBase = (color) => ({
+    grid: { color: 'rgba(30,45,61,0.6)', drawBorder: false },
+    ticks: { color: color || '#3a5068', font: { family: 'Share Tech Mono', size: 9 } },
+  });
 
-    const ctx = document.getElementById('chart-' + m.key).getContext('2d');
+  CHART_GROUPS.forEach(g => {
+    const ctx = document.getElementById('chart-' + g.id).getContext('2d');
+    if (charts[g.id]) { charts[g.id].destroy(); }
 
-    if (charts[m.key]) { charts[m.key].destroy(); }
+    const datasets = g.datasets.map(ds => {
+      const vals = data24h.map(r => { const v = parseFloat(r[ds.key]); return isNaN(v) ? null : v; });
+      const validVals = vals.filter(v => v !== null);
+      const latest = validVals[validVals.length - 1] ?? 0;
+      const mn = validVals.length ? Math.min(...validVals) : 0;
+      const mx = validVals.length ? Math.max(...validVals) : 0;
 
-    const grad = ctx.createLinearGradient(0, 0, 0, 120);
-    grad.addColorStop(0, m.color + '33');
-    grad.addColorStop(1, m.color + '00');
+      // Update stat badges
+      const cvEl = document.getElementById('cv-' + ds.key);
+      const crEl = document.getElementById('cr-' + ds.key);
+      if (cvEl) cvEl.textContent = latest.toFixed(1);
+      if (crEl) crEl.textContent = `↓${mn.toFixed(1)}  ↑${mx.toFixed(1)}`;
 
-    charts[m.key] = new Chart(ctx, {
+      const grad = ctx.createLinearGradient(0, 0, 0, 200);
+      grad.addColorStop(0, ds.color + '28');
+      grad.addColorStop(1, ds.color + '00');
+
+      return {
+        label: ds.label,
+        data: vals,
+        borderColor: ds.color,
+        backgroundColor: grad,
+        borderWidth: 2,
+        pointRadius: nPts > 60 ? 0 : 2,
+        pointHoverRadius: 5,
+        pointBackgroundColor: ds.color,
+        fill: g.datasets.length === 1,  // fill only for single-dataset charts
+        tension: 0.4,
+        spanGaps: true,
+        yAxisID: ds.yAxis || 'y',
+      };
+    });
+
+    // Build scales
+    let scales = { x: xScale };
+    if (g.dualAxis) {
+      // Temp left, Humi right
+      scales.yTemp = { ...yScaleBase('#ff6b3580'), position: 'left',
+        title: { display: true, text: '°C', color: '#ff6b35', font: { family: 'Share Tech Mono', size: 9 } } };
+      scales.yHumi = { ...yScaleBase('#00bcd480'), position: 'right', grid: { drawOnChartArea: false },
+        title: { display: true, text: '%RH', color: '#00bcd4', font: { family: 'Share Tech Mono', size: 9 } },
+        ticks: { color: '#00bcd4', font: { family: 'Share Tech Mono', size: 9 } } };
+    } else {
+      scales.y = yScaleBase();
+    }
+
+    charts[g.id] = new Chart(ctx, {
       type: 'line',
-      data: {
-        labels: slicedLabels,
-        datasets: [{
-          data: vals,
-          borderColor: m.color,
-          backgroundColor: grad,
-          borderWidth: 2,
-          pointRadius: vals.length > 20 ? 0 : 3,
-          pointHoverRadius: 5,
-          pointBackgroundColor: m.color,
-          fill: true,
-          tension: 0.4,
-        }]
-      },
+      data: { labels, datasets },
       options: {
         responsive: true,
-        animation: { duration: 800 },
-        plugins: { legend: { display: false }, tooltip: {
-          backgroundColor: '#131b24', borderColor: m.color, borderWidth: 1,
-          titleColor: '#6b8aab', bodyColor: m.color,
-          titleFont: { family: 'Share Tech Mono', size: 10 },
-          bodyFont: { family: 'Share Tech Mono', size: 14 },
-          callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(2)} ${m.unit}` }
-        }},
-        scales: {
-          x: {
-            grid: { color: 'rgba(30,45,61,0.5)', drawBorder: false },
-            ticks: { color: '#3a5068', font: { family: 'Share Tech Mono', size: 9 },
-                     maxTicksLimit: 8, maxRotation: 0 }
-          },
-          y: {
-            grid: { color: 'rgba(30,45,61,0.5)', drawBorder: false },
-            ticks: { color: '#3a5068', font: { family: 'Share Tech Mono', size: 9 } },
+        animation: { duration: 600 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#131b24',
+            borderColor: g.color, borderWidth: 1,
+            titleColor: '#6b8aab', bodyColor: '#c9d8e8',
+            titleFont: { family: 'Share Tech Mono', size: 10 },
+            bodyFont: { family: 'Share Tech Mono', size: 12 },
+            callbacks: {
+              title: (items) => items[0]?.label || '',
+              label: (item) => {
+                const ds = g.datasets[item.datasetIndex];
+                const u = ds ? (ds.key === 'Humi' ? '%RH' : ds.key === 'Temp' ? '°C' :
+                                ds.key === 'Lux' ? 'lux' : ds.key === 'Noise' ? 'dB' :
+                                ds.key === 'CO2' ? 'ppm' : 'µg/m³') : '';
+                return ` ${item.dataset.label}: ${item.parsed.y?.toFixed(1) ?? '—'} ${u}`;
+              }
+            }
           }
-        }
+        },
+        scales
       }
     });
   });
